@@ -32,9 +32,3 @@ La conexión a la base de datos se configura por variables de entorno (con valor
 ```bash
 ./mvnw spring-boot:run
 ```
-
-## Cómo correr los tests
-
-```bash
-./mvnw test
-```
