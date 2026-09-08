@@ -1,7 +1,9 @@
 package com.amancay.service;
 
+import java.text.Normalizer;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -14,12 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 import com.amancay.dto.CreateProductRequest;
 import com.amancay.dto.PageResponse;
 import com.amancay.dto.ProductDto;
+import com.amancay.dto.ProductImageDto;
 import com.amancay.dto.ProductSummaryDto;
 import com.amancay.dto.ProductVariantDto;
 import com.amancay.dto.UpdateProductRequest;
 import com.amancay.entity.Product;
+import com.amancay.entity.ProductImage;
 import com.amancay.entity.ProductVariant;
-import com.amancay.exceptions.DuplicateSlugException;
 import com.amancay.exceptions.ProductNotFoundException;
 import com.amancay.repository.ProductRepository;
 
@@ -33,9 +36,10 @@ public class ProductService {
 
     @Transactional
     public ProductDto createProduct(CreateProductRequest request) {
-        validateSlug(request.slug(), null);
         Product product = new Product();
-        applyProductFields(product, request.name(), request.slug(), request.shortDescription(), request.description(), request.active());
+
+        applyProductFields(product, request.name(), generateUniqueSlug(request.name(), null), request.shortDescription(),
+                request.description(), request.active());
         if (request.variants() != null) {
             request.variants().forEach(variantRequest -> {
                 ProductVariant variant = new ProductVariant();
@@ -44,24 +48,32 @@ public class ProductService {
                 product.addVariant(variant);
             });
         }
+        if (request.imageUrls() != null) {
+            request.imageUrls().forEach(imageUrl -> {
+                ProductImage image = new ProductImage();
+                image.setImageUrl(imageUrl);
+                product.addImage(image);
+            });
+        }
+        product.setCategoryIds(request.categoryIds() == null ? new HashSet<>() : new HashSet<>(request.categoryIds()));
         return toDto(productRepository.save(product));
     }
 
     @Transactional
     public ProductDto updateProduct(UUID id, UpdateProductRequest request) {
         Product product = findProduct(id);
-        validateSlug(request.slug(), id);
-        applyProductFields(product, request.name(), request.slug(), request.shortDescription(), request.description(), request.active());
+        applyProductFields(product, request.name(), generateUniqueSlug(request.name(), id), request.shortDescription(),
+                request.description(), request.active());
 
         List<UpdateProductRequest.VariantRequest> requestedVariants = request.variants() == null ? List.of() : request.variants();
-        Set<UUID> requestedIds = new HashSet<>();
+        Set<UUID> requestedVariantIds = new HashSet<>();
         for (UpdateProductRequest.VariantRequest variantRequest : requestedVariants) {
             ProductVariant variant;
             if (variantRequest.id() == null) {
                 variant = new ProductVariant();
                 product.addVariant(variant);
             } else {
-                requestedIds.add(variantRequest.id());
+                requestedVariantIds.add(variantRequest.id());
                 variant = product.getVariants().stream()
                         .filter(existing -> variantRequest.id().equals(existing.getId()))
                         .findFirst()
@@ -70,7 +82,28 @@ public class ProductService {
             variant.setPrice(variantRequest.price());
             variant.setStockQuantity(variantRequest.stockQuantity());
         }
-        product.getVariants().removeIf(variant -> variant.getId() != null && !requestedIds.contains(variant.getId()));
+        product.getVariants().removeIf(variant -> variant.getId() != null && !requestedVariantIds.contains(variant.getId()));
+
+        List<UpdateProductRequest.ImageRequest> requestedImages = request.images() == null ? List.of() : request.images();
+        Set<UUID> requestedImageIds = new HashSet<>();
+        for (UpdateProductRequest.ImageRequest imageRequest : requestedImages) {
+            ProductImage image;
+            if (imageRequest.id() == null) {
+                image = new ProductImage();
+                product.addImage(image);
+            } else {
+                requestedImageIds.add(imageRequest.id());
+                image = product.getImages().stream()
+                        .filter(existing -> imageRequest.id().equals(existing.getId()))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException("Image does not belong to product: " + imageRequest.id()));
+            }
+            image.setImageUrl(imageRequest.imageUrl());
+        }
+        product.getImages().removeIf(image -> image.getId() != null && !requestedImageIds.contains(image.getId()));
+
+        product.setCategoryIds(request.categoryIds() == null ? new HashSet<>() : new HashSet<>(request.categoryIds()));
+
         return toDto(productRepository.save(product));
     }
 
@@ -94,7 +127,13 @@ public class ProductService {
             products = productRepository.findAll(pageable);
         }
         return new PageResponse<>(products.map(product -> new ProductSummaryDto(
-                product.getId(), product.getName(), product.getSlug(), product.isActive())).getContent(),
+                product.getId(),
+                product.getName(),
+                product.getSlug(),
+                product.isActive(),
+                product.getCreatedAt(),
+                product.getUpdatedAt()
+            )).getContent(),
                 products.getNumber(), products.getSize(), products.getTotalElements(), products.getTotalPages());
     }
 
@@ -108,14 +147,26 @@ public class ProductService {
         return productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
     }
 
-    private void validateSlug(String slug, UUID currentId) {
-        boolean exists = currentId == null ? productRepository.existsBySlug(slug) : productRepository.existsBySlugAndIdNot(slug, currentId);
-        if (exists) {
-            throw new DuplicateSlugException(slug);
+    private String generateUniqueSlug(String name, UUID currentId) {
+        String base = slugify(name);
+        String candidate = base;
+        int suffix = 2;
+        while (currentId == null ? productRepository.existsBySlug(candidate) : productRepository.existsBySlugAndIdNot(candidate, currentId)) {
+            candidate = base + "-" + suffix++;
         }
+        return candidate;
     }
 
-    private void applyProductFields(Product product, String name, String slug, String shortDescription, String description, boolean active) {
+    private String slugify(String name) {
+        String normalized = Normalizer.normalize(name, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+        String slug = normalized.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-+|-+$", "");
+        return slug.isEmpty() ? UUID.randomUUID().toString() : slug;
+    }
+
+    private void applyProductFields(Product product, String name, String slug, String shortDescription, String description,
+            boolean active) {
         product.setName(name);
         product.setSlug(slug);
         product.setShortDescription(shortDescription);
@@ -127,7 +178,11 @@ public class ProductService {
         List<ProductVariantDto> variants = product.getVariants().stream()
                 .map(variant -> new ProductVariantDto(variant.getId(), variant.getPrice(), variant.getStockQuantity()))
                 .toList();
+        List<ProductImageDto> images = product.getImages().stream()
+                .map(image -> new ProductImageDto(image.getId(), image.getImageUrl()))
+                .toList();
         return new ProductDto(product.getId(), product.getName(), product.getSlug(), product.getShortDescription(),
-                product.getDescription(), product.isActive(), product.getCreatedAt(), product.getUpdatedAt(), variants);
+                product.getDescription(), product.isActive(),
+                product.getCreatedAt(), product.getUpdatedAt(), variants, images, List.copyOf(product.getCategoryIds()));
     }
 }
