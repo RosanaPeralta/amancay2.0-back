@@ -1,3 +1,0 @@
-ALTER TABLE products
-    ADD COLUMN price DECIMAL(12, 2) NOT NULL DEFAULT 0,
-    ADD COLUMN stock_quantity INT NOT NULL DEFAULT 0;
