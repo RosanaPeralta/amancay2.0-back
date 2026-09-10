@@ -16,8 +16,6 @@ public class SupabaseJwtAuthenticationConverter implements Converter<Jwt, Abstra
         UUID id = UUID.fromString(jwt.getSubject());
         String email = jwt.getClaimAsString("email");
         LoggedUser loggedUser = new LoggedUser(id, email);
-        // The role is not in the token: UserRoleAuthoritiesFilter resolves it from the database
-        // later in the chain.
         return new LoggedUserAuthenticationToken(loggedUser, jwt, List.of());
     }
 }

@@ -13,15 +13,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Authenticates every request as a fixed local user, so the authenticated endpoints can be
- * exercised without a Supabase token during development.
+ * Autentica cada solicitud como un usuario local fijo, de modo que los endpoints autenticados
+ * puedan probarse sin un token de Supabase durante el desarrollo.
  *
- * <p>This filter is only registered when {@code amancay.security.dev-user.enabled} is {@code true}.
- * It is disabled by default and must never be enabled outside local development: while active,
- * every caller is treated as the configured user and no token is required.
+ * <p>Este filtro solo se registra cuando {@code amancay.security.dev-user.enabled} es {@code true}.
+ * Está deshabilitado de forma predeterminada y nunca debe habilitarse fuera del desarrollo local: mientras
+ * esté activo, cada solicitante es tratado como el usuario configurado y no se requiere ningún token.
  *
- * <p>A request that already carries an authentication is left untouched, so a real token still
- * wins when one is present.
+ * <p>Una solicitud que ya incluye una autenticación se deja intacta, por lo que un token real sigue
+ * teniendo prioridad cuando está presente.
  */
 public class DevUserAuthenticationFilter extends OncePerRequestFilter {
 
@@ -41,11 +41,6 @@ public class DevUserAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Also authenticate the ERROR dispatch. Without this, a request that fails validation is
-     * forwarded to {@code /error} with an empty security context and comes back as 401 instead of
-     * the 400 the handler produced.
-     */
     @Override
     protected boolean shouldNotFilterErrorDispatch() {
         return false;

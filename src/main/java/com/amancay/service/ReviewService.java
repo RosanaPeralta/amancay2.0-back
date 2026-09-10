@@ -109,10 +109,6 @@ public class ReviewService {
         return reviewRepository.findById(id).orElseThrow(() -> new ReviewNotFoundException(id));
     }
 
-    /**
-     * A review owned by another user is reported as missing on purpose, so the
-     * API never leaks the existence of somebody else's review.
-     */
     private Review findOwnedReview(UUID userId, UUID reviewId) {
         Review review = findReview(reviewId);
         if (!review.getUserId().equals(userId)) {

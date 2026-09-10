@@ -21,7 +21,6 @@ import jakarta.persistence.Table;
 @Getter
 @Setter
 public class User {
-    // The id comes from the Supabase JWT subject, so it is assigned, never generated.
     @Id
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;

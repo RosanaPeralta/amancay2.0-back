@@ -20,10 +20,6 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
 
     Page<Review> findByProductIdAndStatus(UUID productId, ReviewStatus status, Pageable pageable);
 
-    /**
-     * Returns one row per distinct rating of a product, restricted to published
-     * reviews. Each row is a pair {@code [rating (Integer), count (Long)]}.
-     */
     @Query("""
         SELECT r.rating, COUNT(r)
         FROM Review r

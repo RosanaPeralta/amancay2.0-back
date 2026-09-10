@@ -18,18 +18,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Adds the role stored in {@code users.role} to the current authentication as a
- * {@code ROLE_BUYER} / {@code ROLE_ADMIN} authority, so any endpoint can be guarded with
- * {@code @PreAuthorize("hasRole('ADMIN')")} without touching security code.
+ * Agrega el rol almacenado en {@code users.role} a la autenticación actual como una
+ * autoridad {@code ROLE_BUYER} / {@code ROLE_ADMIN}, de modo que cualquier endpoint pueda
+ * protegerse con {@code @PreAuthorize("hasRole('ADMIN')")} sin modificar el código de seguridad.
  *
- * <p>The filter must be registered after authentication has happened in the chain: it reads the
- * {@link LoggedUser} left by the bearer-token filter (or by {@link DevUserAuthenticationFilter})
- * and replaces the authentication with an equivalent one that carries the role. Requests that are
- * not authenticated are left untouched, so public endpoints never hit the database.
- *
- * <p><strong>Cost:</strong> this performs one database read per authenticated request. It is the
- * simplest correct implementation and it keeps the role authoritative on every call; the obvious
- * optimisation, once this becomes measurable, is a short-lived cache of user id to role.
+ * <p>El filtro debe registrarse después de que la autenticación haya ocurrido en la cadena: lee el
+ * {@link LoggedUser} dejado por el filtro de token bearer (o por {@link DevUserAuthenticationFilter})
+ * y reemplaza la autenticación por una equivalente que contenga el rol. Las solicitudes que no
+ * están autenticadas se dejan intactas, por lo que los endpoints públicos nunca consultan la base de datos.
  */
 public class UserRoleAuthoritiesFilter extends OncePerRequestFilter {
 
@@ -59,11 +55,6 @@ public class UserRoleAuthoritiesFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Also run on the ERROR dispatch. Without this, a request that fails validation is forwarded to
-     * {@code /error} with an authentication that carries no role and comes back as 401 instead of
-     * the status the handler produced.
-     */
     @Override
     protected boolean shouldNotFilterErrorDispatch() {
         return false;

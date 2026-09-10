@@ -6,13 +6,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 /**
- * Temporary {@link PurchaseVerifier} that authorises every user, used while the
- * Orders module does not exist yet and there is no purchase history to query.
+ * Implementación temporal de {@link PurchaseVerifier} que autoriza a cada usuario, utilizada
+ * mientras el módulo de Órdenes aún no existe y no hay historial de compras para consultar.
  *
- * <p>It is only registered when {@code amancay.reviews.verify-purchase} is
- * absent or {@code false}. Once a real, order-backed implementation lands,
- * setting {@code amancay.reviews.verify-purchase=true} disables this bean and
- * the real one takes over: no code change is required here.
+ * <p>Solo se registra cuando {@code amancay.reviews.verify-purchase} está ausente
+ * o es {@code false}. Una vez que llegue una implementación real respaldada por órdenes,
+ * configurar {@code amancay.reviews.verify-purchase=true} deshabilita este bean y
+ * el real toma el control: no se requiere ningún cambio de código aquí.
  */
 @Service
 @ConditionalOnProperty(name = "amancay.reviews.verify-purchase", havingValue = "false", matchIfMissing = true)
