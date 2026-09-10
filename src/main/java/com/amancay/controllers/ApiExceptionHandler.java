@@ -10,13 +10,37 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.amancay.exceptions.CategoryNotFoundException;
 import com.amancay.exceptions.DuplicateCategoryNameException;
 import com.amancay.exceptions.DuplicateSlugException;
+import com.amancay.exceptions.DuplicateReviewException;
 import com.amancay.exceptions.ProductNotFoundException;
+import com.amancay.exceptions.PurchaseRequiredException;
+import com.amancay.exceptions.ReviewNotFoundException;
+import com.amancay.exceptions.UserNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
     @ExceptionHandler(ProductNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotFound(ProductNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleUserNotFound(UserNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(ReviewNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleReviewNotFound(ReviewNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(DuplicateReviewException.class)
+    public ResponseEntity<Map<String, String>> handleDuplicateReview(DuplicateReviewException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(PurchaseRequiredException.class)
+    public ResponseEntity<Map<String, String>> handlePurchaseRequired(PurchaseRequiredException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", exception.getMessage()));
     }
 
     @ExceptionHandler(DuplicateSlugException.class)
