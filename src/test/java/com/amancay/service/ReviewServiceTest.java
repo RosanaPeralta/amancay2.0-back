@@ -96,18 +96,18 @@ class ReviewServiceTest {
         when(productRepository.existsById(PRODUCT_ID)).thenReturn(true);
         when(purchaseVerifier.hasPurchased(USER_ID, PRODUCT_ID)).thenReturn(true);
         when(reviewRepository.existsByProductIdAndUserId(PRODUCT_ID, USER_ID)).thenReturn(true);
-        when(reviewRepository.findByProductIdAndUserId(PRODUCT_ID, USER_ID))
-                .thenReturn(Optional.of(review(REVIEW_ID, USER_ID, 3)));
+        Review existing = review(USER_ID, 3);
+        when(reviewRepository.findByProductIdAndUserId(PRODUCT_ID, USER_ID)).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> reviewService.create(USER_ID, PRODUCT_ID, new CreateReviewRequest(4, null, null)))
                 .isInstanceOf(DuplicateReviewException.class)
-                .hasMessageContaining(REVIEW_ID.toString());
+                .hasMessageContaining(existing.getId().toString());
         verify(reviewRepository, never()).save(any(Review.class));
     }
 
     @Test
     void updatesOwnReview() {
-        Review existing = review(REVIEW_ID, USER_ID, 3);
+        Review existing = review(USER_ID, 3);
         when(reviewRepository.findById(REVIEW_ID)).thenReturn(Optional.of(existing));
         when(reviewRepository.save(any(Review.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -120,7 +120,7 @@ class ReviewServiceTest {
 
     @Test
     void rejectsUpdateFromNonAuthorAsNotFound() {
-        when(reviewRepository.findById(REVIEW_ID)).thenReturn(Optional.of(review(REVIEW_ID, OTHER_USER_ID, 3)));
+        when(reviewRepository.findById(REVIEW_ID)).thenReturn(Optional.of(review(OTHER_USER_ID, 3)));
 
         assertThatThrownBy(() -> reviewService.update(USER_ID, REVIEW_ID, new UpdateReviewRequest(2, null, null)))
                 .isInstanceOf(ReviewNotFoundException.class);
@@ -129,7 +129,7 @@ class ReviewServiceTest {
 
     @Test
     void deletesOwnReview() {
-        Review existing = review(REVIEW_ID, USER_ID, 3);
+        Review existing = review(USER_ID, 3);
         when(reviewRepository.findById(REVIEW_ID)).thenReturn(Optional.of(existing));
 
         reviewService.delete(USER_ID, REVIEW_ID);
@@ -139,7 +139,7 @@ class ReviewServiceTest {
 
     @Test
     void rejectsDeleteFromNonAuthorAsNotFound() {
-        when(reviewRepository.findById(REVIEW_ID)).thenReturn(Optional.of(review(REVIEW_ID, OTHER_USER_ID, 3)));
+        when(reviewRepository.findById(REVIEW_ID)).thenReturn(Optional.of(review(OTHER_USER_ID, 3)));
 
         assertThatThrownBy(() -> reviewService.delete(USER_ID, REVIEW_ID))
                 .isInstanceOf(ReviewNotFoundException.class);
@@ -207,7 +207,7 @@ class ReviewServiceTest {
 
     @Test
     void listsOnlyPublishedReviewsOfAProduct() {
-        Review published = review(REVIEW_ID, USER_ID, 5);
+        Review published = review(USER_ID, 5);
         when(productRepository.existsById(PRODUCT_ID)).thenReturn(true);
         when(reviewRepository.findByProductIdAndStatus(
                 org.mockito.ArgumentMatchers.eq(PRODUCT_ID),
@@ -222,20 +222,20 @@ class ReviewServiceTest {
                 org.springframework.data.domain.PageRequest.of(0, 20));
 
         assertThat(result.content()).hasSize(1);
-        assertThat(result.content().getFirst().id()).isEqualTo(REVIEW_ID);
+        assertThat(result.content().getFirst().id()).isEqualTo(published.getId());
         assertThat(result.page()).isZero();
         assertThat(result.size()).isEqualTo(20);
         assertThat(result.totalElements()).isEqualTo(1L);
         assertThat(result.totalPages()).isEqualTo(1);
     }
 
-    private Review review(UUID id, UUID userId, int rating) {
-        Review review = new Review();
-        review.setId(id);
-        review.setProductId(PRODUCT_ID);
-        review.setUserId(userId);
-        review.setRating(rating);
-        review.setStatus(ReviewStatus.PUBLISHED);
-        return review;
+    /**
+     * Construye una resenia por el mismo camino que el codigo de produccion: la factory estatica.
+     * El id lo asigna ella, asi que las pruebas que lo necesitan lo leen del objeto en vez de
+     * imponer una constante. Es una mejora, no una concesion: el test deja de depender de un
+     * detalle que el dominio ahora controla.
+     */
+    private Review review(UUID userId, int rating) {
+        return Review.publish(PRODUCT_ID, userId, rating, null, null);
     }
 }

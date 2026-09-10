@@ -52,19 +52,14 @@ public class ReviewService {
                     .orElse(null);
             throw new DuplicateReviewException(productId, existingId);
         }
-        Review review = new Review();
-        review.setId(UUID.randomUUID());
-        review.setProductId(productId);
-        review.setUserId(userId);
-        review.setStatus(ReviewStatus.PUBLISHED);
-        applyReviewFields(review, request.rating(), request.title(), request.comment());
+        Review review = Review.publish(productId, userId, request.rating(), request.title(), request.comment());
         return toDto(reviewRepository.save(review));
     }
 
     @Transactional
     public ReviewDto update(UUID userId, UUID reviewId, UpdateReviewRequest request) {
         Review review = findOwnedReview(userId, reviewId);
-        applyReviewFields(review, request.rating(), request.title(), request.comment());
+        review.edit(request.rating(), request.title(), request.comment());
         return toDto(reviewRepository.save(review));
     }
 
@@ -124,12 +119,6 @@ public class ReviewService {
             throw new ReviewNotFoundException(reviewId);
         }
         return review;
-    }
-
-    private void applyReviewFields(Review review, Integer rating, String title, String comment) {
-        review.setRating(rating);
-        review.setTitle(title);
-        review.setComment(comment);
     }
 
     private ReviewDto toDto(Review review) {

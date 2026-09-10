@@ -23,6 +23,28 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import com.amancay.entity.Role;
 import com.amancay.service.UserService;
 
+/**
+ * Protege la resolución de roles que habilita las autorizaciones por rol de toda la API.
+ *
+ * <p>Qué cubre:
+ * <ul>
+ *   <li>Que el rol guardado en {@code users.role} se traduzca a las authorities {@code ROLE_ADMIN}
+ *       y {@code ROLE_BUYER}. El prefijo {@code ROLE_} no es decorativo: es lo que hace que
+ *       {@code hasRole('ADMIN')} matchee. Si alguien lo saca, las anotaciones de seguridad dejan de
+ *       coincidir <strong>en silencio</strong> y los endpoints de administración quedan abiertos,
+ *       sin ningun error visible.</li>
+ *   <li>Que un request sin autenticar se deje intacto y <strong>no lea la base de datos</strong>.
+ *       El filtro hace una consulta por request autenticado; si esa guarda se rompe, cada request
+ *       público (por ejemplo el listado de productos o de reseñas) pasa a pegarle a Supabase.</li>
+ * </ul>
+ *
+ * <p>Cuando se puede eliminar: cuando se elimine {@link UserRoleAuthoritiesFilter}, es decir si el
+ * rol pasa a viajar dentro del token de Supabase como claim y deja de resolverse contra la base. En
+ * ese escenario la lógica se mudaría al converter del token y los tests deberían mudarse con ella,
+ * no borrarse. Mientras el rol se resuelva por consulta, este test se queda.
+ *
+ * <p>No levanta contexto de Spring: mockea {@link UserService} y corre en milisegundos.
+ */
 @ExtendWith(MockitoExtension.class)
 class UserRoleAuthoritiesFilterTest {
 

@@ -41,10 +41,6 @@ public class UserService {
         return toDto(user);
     }
 
-    /**
-     * Returns the role of the given user, provisioning the row on first sight so an authenticated
-     * caller always resolves to a role.
-     */
     @Transactional
     public Role getOrProvisionRole(UUID id, String email) {
         return getOrProvision(id, email, null).role();
