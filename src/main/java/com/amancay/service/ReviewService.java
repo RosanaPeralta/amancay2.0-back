@@ -3,7 +3,9 @@ package com.amancay.service;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,17 +14,21 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.amancay.dto.CreateReviewRequest;
 import com.amancay.dto.PageResponse;
+import com.amancay.dto.RatingCount;
 import com.amancay.dto.RatingSummaryDto;
 import com.amancay.dto.ReviewDto;
 import com.amancay.dto.UpdateReviewRequest;
 import com.amancay.entity.Review;
 import com.amancay.entity.ReviewStatus;
+import com.amancay.entity.User;
 import com.amancay.exceptions.DuplicateReviewException;
 import com.amancay.exceptions.ProductNotFoundException;
 import com.amancay.exceptions.PurchaseRequiredException;
 import com.amancay.exceptions.ReviewNotFoundException;
 import com.amancay.repository.ProductRepository;
 import com.amancay.repository.ReviewRepository;
+import com.amancay.repository.ReviewSpecifications;
+import com.amancay.repository.UserRepository;
 
 @Service
 public class ReviewService {
@@ -31,12 +37,14 @@ public class ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final ProductRepository productRepository;
+    private final UserRepository userRepository;
     private final PurchaseVerifier purchaseVerifier;
 
     public ReviewService(ReviewRepository reviewRepository, ProductRepository productRepository,
-            PurchaseVerifier purchaseVerifier) {
+            UserRepository userRepository, PurchaseVerifier purchaseVerifier) {
         this.reviewRepository = reviewRepository;
         this.productRepository = productRepository;
+        this.userRepository = userRepository;
         this.purchaseVerifier = purchaseVerifier;
     }
 
@@ -53,14 +61,14 @@ public class ReviewService {
             throw new DuplicateReviewException(productId, existingId);
         }
         Review review = Review.publish(productId, userId, request.rating(), request.title(), request.comment());
-        return toDto(reviewRepository.save(review));
+        return toDto(reviewRepository.saveAndFlush(review));
     }
 
     @Transactional
     public ReviewDto update(UUID userId, UUID reviewId, UpdateReviewRequest request) {
         Review review = findOwnedReview(userId, reviewId);
         review.edit(request.rating(), request.title(), request.comment());
-        return toDto(reviewRepository.save(review));
+        return toDto(reviewRepository.saveAndFlush(review));
     }
 
     @Transactional
@@ -72,15 +80,19 @@ public class ReviewService {
     @Transactional(readOnly = true)
     public PageResponse<ReviewDto> listByProduct(UUID productId, Pageable pageable) {
         requireProduct(productId);
-        Page<Review> reviews = reviewRepository.findByProductIdAndStatus(productId, ReviewStatus.PUBLISHED, pageable);
-        return new PageResponse<>(reviews.map(this::toDto).getContent(), reviews.getNumber(), reviews.getSize(),
-                reviews.getTotalElements(), reviews.getTotalPages());
+        return toPage(reviewRepository.findByProductIdAndStatus(productId, ReviewStatus.PUBLISHED, pageable));
+    }
+
+    /** REV-09: las reseñas del usuario, incluidas las ocultadas por moderación. */
+    @Transactional(readOnly = true)
+    public PageResponse<ReviewDto> listByUser(UUID userId, Pageable pageable) {
+        return toPage(reviewRepository.findByUserId(userId, pageable));
     }
 
     @Transactional(readOnly = true)
     public RatingSummaryDto ratingSummary(UUID productId) {
         requireProduct(productId);
-        List<Object[]> rows = reviewRepository.countPublishedGroupedByRating(productId);
+        List<RatingCount> rows = reviewRepository.countPublishedGroupedByRating(productId);
 
         Map<Integer, Long> distribution = new LinkedHashMap<>();
         for (int rating = MIN_RATING; rating <= MAX_RATING; rating++) {
@@ -88,16 +100,39 @@ public class ReviewService {
         }
         long total = 0L;
         long weightedSum = 0L;
-        for (Object[] row : rows) {
-            int rating = ((Number) row[0]).intValue();
-            long count = ((Number) row[1]).longValue();
-            distribution.put(rating, count);
-            total += count;
-            weightedSum += (long) rating * count;
+        for (RatingCount row : rows) {
+            distribution.put(row.rating(), row.count());
+            total += row.count();
+            weightedSum += (long) row.rating() * row.count();
         }
         Double average = total == 0 ? null : Math.round((double) weightedSum / total * 10.0) / 10.0;
         return new RatingSummaryDto(average, total, distribution);
     }
+
+    // --- Moderación (REV-07) ---------------------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public PageResponse<ReviewDto> listForModeration(ReviewStatus status, UUID productId, Pageable pageable) {
+        return toPage(reviewRepository.findAll(ReviewSpecifications.matching(status, productId), pageable));
+    }
+
+    @Transactional
+    public ReviewDto changeStatus(UUID reviewId, ReviewStatus status) {
+        Review review = findReview(reviewId);
+        switch (status) {
+            case HIDDEN -> review.hide();
+            case PUBLISHED -> review.republish();
+        }
+        return toDto(reviewRepository.saveAndFlush(review));
+    }
+
+    /** A diferencia de {@link #delete}, no exige ser el autor: es la acción "eliminar" del panel ADMIN. */
+    @Transactional
+    public void deleteAsAdmin(UUID reviewId) {
+        reviewRepository.delete(findReview(reviewId));
+    }
+
+    // --- Helpers ---------------------------------------------------------------------------
 
     private void requireProduct(UUID productId) {
         if (!productRepository.existsById(productId)) {
@@ -118,8 +153,26 @@ public class ReviewService {
     }
 
     private ReviewDto toDto(Review review) {
-        return new ReviewDto(review.getId(), review.getProductId(), review.getUserId(), review.getRating(),
-                review.getTitle(), review.getComment(), review.getStatus(), review.getCreatedAt(),
-                review.getUpdatedAt());
+        String authorName = userRepository.findById(review.getUserId()).map(User::getName).orElse(null);
+        return toDto(review, authorName);
+    }
+
+    /** Resuelve los nombres de autor de toda la página con una sola consulta. */
+    private PageResponse<ReviewDto> toPage(Page<Review> reviews) {
+        Set<UUID> userIds = reviews.getContent().stream().map(Review::getUserId).collect(Collectors.toSet());
+        Map<UUID, String> namesById = userRepository.findAllById(userIds).stream()
+                .filter(user -> user.getName() != null)
+                .collect(Collectors.toMap(User::getId, User::getName, (a, b) -> a));
+        List<ReviewDto> content = reviews.getContent().stream()
+                .map(review -> toDto(review, namesById.get(review.getUserId())))
+                .toList();
+        return new PageResponse<>(content, reviews.getNumber(), reviews.getSize(),
+                reviews.getTotalElements(), reviews.getTotalPages());
+    }
+
+    private ReviewDto toDto(Review review, String authorName) {
+        return new ReviewDto(review.getId(), review.getProductId(), review.getUserId(), authorName,
+                review.getRating(), review.getTitle(), review.getComment(), review.getStatus(),
+                review.getCreatedAt(), review.getUpdatedAt());
     }
 }

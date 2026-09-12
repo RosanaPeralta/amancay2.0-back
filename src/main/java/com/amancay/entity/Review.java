@@ -86,6 +86,16 @@ public class Review {
         this.comment = comment;
     }
 
+    /** Moderación (REV-07): la reseña deja de aparecer en el listado público y en el promedio. */
+    public void hide() {
+        this.status = ReviewStatus.HIDDEN;
+    }
+
+    /** Moderación (REV-07): revierte {@link #hide()}. */
+    public void republish() {
+        this.status = ReviewStatus.PUBLISHED;
+    }
+
 
     public void setRating(int rating) {
         if (rating < MIN_RATING || rating > MAX_RATING) {

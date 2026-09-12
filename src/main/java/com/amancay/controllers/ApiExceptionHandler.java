@@ -4,16 +4,22 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.amancay.exceptions.AddressLimitReachedException;
+import com.amancay.exceptions.AddressNotFoundException;
 import com.amancay.exceptions.CategoryNotFoundException;
 import com.amancay.exceptions.DuplicateCategoryNameException;
+import com.amancay.exceptions.DuplicateFavoriteException;
 import com.amancay.exceptions.DuplicateSlugException;
 import com.amancay.exceptions.DuplicateReviewException;
+import com.amancay.exceptions.FavoriteNotFoundException;
 import com.amancay.exceptions.ProductNotFoundException;
 import com.amancay.exceptions.PurchaseRequiredException;
 import com.amancay.exceptions.ReviewNotFoundException;
+import com.amancay.exceptions.SelfRoleChangeException;
 import com.amancay.exceptions.UserNotFoundException;
 
 @RestControllerAdvice
@@ -46,6 +52,37 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DuplicateSlugException.class)
     public ResponseEntity<Map<String, String>> handleDuplicateSlug(DuplicateSlugException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(AddressNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleAddressNotFound(AddressNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(AddressLimitReachedException.class)
+    public ResponseEntity<Map<String, String>> handleAddressLimitReached(AddressLimitReachedException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(FavoriteNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleFavoriteNotFound(FavoriteNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(DuplicateFavoriteException.class)
+    public ResponseEntity<Map<String, String>> handleDuplicateFavorite(DuplicateFavoriteException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(SelfRoleChangeException.class)
+    public ResponseEntity<Map<String, String>> handleSelfRoleChange(SelfRoleChangeException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    /** {@code @PreAuthorize} rechazado (BUYER contra un endpoint ADMIN): mismo formato que el resto. */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

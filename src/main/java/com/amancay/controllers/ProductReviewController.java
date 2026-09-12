@@ -5,7 +5,6 @@ import java.util.UUID;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -21,6 +20,7 @@ import com.amancay.dto.CreateReviewRequest;
 import com.amancay.dto.PageResponse;
 import com.amancay.dto.RatingSummaryDto;
 import com.amancay.dto.ReviewDto;
+import com.amancay.dto.ReviewSort;
 import com.amancay.security.LoggedUser;
 import com.amancay.service.ReviewService;
 
@@ -40,9 +40,10 @@ public class ProductReviewController {
     public ResponseEntity<PageResponse<ReviewDto>> list(
             @PathVariable UUID productId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "recent") String sort) {
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
-                Sort.by("createdAt").descending());
+                ReviewSort.from(sort).sort());
         return ResponseEntity.ok(reviewService.listByProduct(productId, pageable));
     }
 

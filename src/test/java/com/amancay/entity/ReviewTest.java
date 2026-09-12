@@ -91,4 +91,17 @@ class ReviewTest {
         assertThatThrownBy(() -> Review.publish(PRODUCT_ID, null, 4, null, null))
                 .isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    void hideAndRepublishToggleTheStatusWithoutTouchingTheRest() {
+        Review review = Review.publish(PRODUCT_ID, USER_ID, 4, "Buena", null);
+
+        review.hide();
+        assertThat(review.getStatus()).isEqualTo(ReviewStatus.HIDDEN);
+        assertThat(review.getRating()).isEqualTo(4);
+        assertThat(review.getTitle()).isEqualTo("Buena");
+
+        review.republish();
+        assertThat(review.getStatus()).isEqualTo(ReviewStatus.PUBLISHED);
+    }
 }
