@@ -13,15 +13,21 @@ import jakarta.validation.constraints.Size;
 
 public record UpdateProductRequest(
         @NotBlank @Size(max = 255) String name,
-        @NotBlank @Size(max = 255) String slug,
         String shortDescription,
         String description,
         boolean active,
-        @Valid List<VariantRequest> variants) {
+        @Valid List<VariantRequest> variants,
+        @Valid List<ImageRequest> images,
+        List<UUID> categoryIds) {
 
     public record VariantRequest(
             UUID id,
             @NotNull @DecimalMin("0.00") BigDecimal price,
             @Min(0) int stockQuantity) {
+    }
+
+    public record ImageRequest(
+            UUID id,
+            @NotBlank String imageUrl) {
     }
 }

@@ -2,6 +2,7 @@ package com.amancay.dto;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
@@ -12,11 +13,12 @@ import jakarta.validation.constraints.Size;
 
 public record CreateProductRequest(
         @NotBlank @Size(max = 255) String name,
-        @NotBlank @Size(max = 255) String slug,
         String shortDescription,
         String description,
         boolean active,
-        @Valid List<VariantRequest> variants) {
+        @Valid List<VariantRequest> variants,
+        List<@NotBlank String> imageUrls,
+        List<UUID> categoryIds) {
 
     public record VariantRequest(
             @NotNull @DecimalMin("0.00") BigDecimal price,
