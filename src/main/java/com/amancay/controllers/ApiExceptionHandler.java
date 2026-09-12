@@ -2,6 +2,7 @@ package com.amancay.controllers;
 
 import java.util.Map;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -13,7 +14,6 @@ import com.amancay.exceptions.AddressNotFoundException;
 import com.amancay.exceptions.CategoryNotFoundException;
 import com.amancay.exceptions.DuplicateCategoryNameException;
 import com.amancay.exceptions.DuplicateFavoriteException;
-import com.amancay.exceptions.DuplicateSlugException;
 import com.amancay.exceptions.DuplicateReviewException;
 import com.amancay.exceptions.FavoriteNotFoundException;
 import com.amancay.exceptions.ProductNotFoundException;
@@ -47,11 +47,6 @@ public class ApiExceptionHandler {
     @ExceptionHandler(PurchaseRequiredException.class)
     public ResponseEntity<Map<String, String>> handlePurchaseRequired(PurchaseRequiredException exception) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", exception.getMessage()));
-    }
-
-    @ExceptionHandler(DuplicateSlugException.class)
-    public ResponseEntity<Map<String, String>> handleDuplicateSlug(DuplicateSlugException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
     }
 
     @ExceptionHandler(AddressNotFoundException.class)
@@ -98,5 +93,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DuplicateCategoryNameException.class)
     public ResponseEntity<String> handleDuplicateCategoryName(DuplicateCategoryNameException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, String>> handleDataIntegrityViolation(DataIntegrityViolationException exception) {
+        return ResponseEntity.badRequest().body(
+                Map.of("error", "Invalid or inconsistent data: " + exception.getMostSpecificCause().getMessage()));
     }
 }

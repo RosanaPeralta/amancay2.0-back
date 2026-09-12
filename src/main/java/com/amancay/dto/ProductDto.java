@@ -13,5 +13,7 @@ public record ProductDto(
         boolean active,
         Instant createdAt,
         Instant updatedAt,
-        List<ProductVariantDto> variants) {
+        List<ProductVariantDto> variants,
+        List<ProductImageDto> images,
+        List<UUID> categoryIds) {
 }
