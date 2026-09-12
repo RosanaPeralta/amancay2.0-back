@@ -1,5 +1,6 @@
 package com.amancay.security;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.core.convert.converter.Converter;
@@ -15,6 +16,6 @@ public class SupabaseJwtAuthenticationConverter implements Converter<Jwt, Abstra
         UUID id = UUID.fromString(jwt.getSubject());
         String email = jwt.getClaimAsString("email");
         LoggedUser loggedUser = new LoggedUser(id, email);
-        return new LoggedUserAuthenticationToken(loggedUser, jwt);
+        return new LoggedUserAuthenticationToken(loggedUser, jwt, List.of());
     }
 }
