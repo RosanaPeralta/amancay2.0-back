@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.amancay.exceptions.CategoryNotFoundException;
 import com.amancay.exceptions.DuplicateCategoryNameException;
+import com.amancay.exceptions.InvalidOrderStatusTransitionException;
+import com.amancay.exceptions.OrderNotFoundException;
 import com.amancay.exceptions.ProductNotFoundException;
 
 @RestControllerAdvice
@@ -32,6 +34,16 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DuplicateCategoryNameException.class)
     public ResponseEntity<String> handleDuplicateCategoryName(DuplicateCategoryNameException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(OrderNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleOrderNotFound(OrderNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidOrderStatusTransitionException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidOrderStatusTransition(InvalidOrderStatusTransitionException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
