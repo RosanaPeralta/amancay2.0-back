@@ -8,6 +8,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,10 +21,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.amancay.dto.CreateProductRequest;
+import com.amancay.dto.DiscountRequest;
 import com.amancay.dto.PageResponse;
 import com.amancay.dto.ProductDto;
 import com.amancay.dto.ProductSummaryDto;
 import com.amancay.dto.UpdateProductRequest;
+import com.amancay.entity.Product;
+import com.amancay.service.DiscountService;
 import com.amancay.service.ProductService;
 
 import jakarta.validation.Valid;
@@ -33,9 +37,11 @@ import jakarta.validation.Valid;
 @Validated
 public class ProductController {
     private final ProductService productService;
+    private final DiscountService discountService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, DiscountService discountService) {
         this.productService = productService;
+        this.discountService = discountService;
     }
 
     @GetMapping
@@ -67,6 +73,27 @@ public class ProductController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         productService.deleteProduct(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/{productId}/discounts")
+    public ResponseEntity<ProductDto> createAndAssignDiscount(@PathVariable UUID productId, @Valid @RequestBody DiscountRequest request) {
+        Product product = productService.assignDiscount(productId, discountService.create(request).getId());
+        return ResponseEntity.ok(productService.getProductById(product.getId()));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{productId}/discounts/{discountId}")
+    public ResponseEntity<ProductDto> assignExistingDiscount(@PathVariable UUID productId, @PathVariable Long discountId) {
+        productService.assignDiscount(productId, discountId);
+        return ResponseEntity.ok(productService.getProductById(productId));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{productId}/discounts")
+    public ResponseEntity<Void> removeDiscount(@PathVariable UUID productId) {
+        productService.removeDiscount(productId);
         return ResponseEntity.noContent().build();
     }
 }
