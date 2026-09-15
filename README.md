@@ -8,8 +8,7 @@ Backend de Amancay construido con Java, Spring Boot y Maven.
 - Spring Boot 4.1.1
 - Maven
 - Spring Web, Spring Data JPA, Validation, Lombok
-- PostgreSQL
-- Flyway
+- PostgreSQL (Supabase)
 - OpenAPI / Swagger UI
 
 ## Requisitos
@@ -48,7 +47,7 @@ $env:DB_PASSWORD="CONTRASEÑA_SUPABASE"
 ./mvnw.cmd spring-boot:run
 ```
 
-Al iniciar correctamente, Flyway ejecutará las migraciones y creará las tablas en el esquema `public` de Supabase.
+El schema **vive en Supabase** y la aplicación solo lo valida al arrancar (`spring.jpa.hibernate.ddl-auto=validate`). No hay migraciones automáticas: los cambios de schema se aplican en el SQL Editor de Supabase.
 
 Con la aplicación funcionando, Swagger se puede abrir en:
 
@@ -72,10 +71,22 @@ La API CRUD está disponible en `/api/products`. Las operaciones de creación y 
 - `PUT /api/products/{id}`
 - `DELETE /api/products/{id}`
 
-Flyway ejecuta las migraciones en `src/main/resources/db/migration`, incluyendo un producto de ejemplo. Swagger UI está disponible en `/swagger-ui/index.html` y el contrato adicional en `src/main/resources/openapi/products.yaml`.
+Swagger UI está disponible en `/swagger-ui/index.html` y el contrato adicional en `src/main/resources/openapi/products.yaml`.
 
-Para ejecutar las pruebas unitarias y la integración con Testcontainers:
+## Usuarios y Reseñas
+
+Perfil (`/api/me`), direcciones (`/api/me/addresses`), favoritos (`/api/me/favorites`), reseñas (`/api/products/{id}/reviews`, `/api/reviews/{id}`, `/api/me/reviews`) y administración (`/api/admin/**`, solo ADMIN). Todos los endpoints están en Swagger UI.
+
+## Tests
+
+Pruebas unitarias e integración con Testcontainers (requiere Docker):
 
 ```bash
 ./mvnw test
+```
+
+Sin Docker, excluyendo la integración:
+
+```powershell
+.\mvnw.cmd test "-Dtest=!ProductIntegrationTest" -DfailIfNoSpecifiedTests=false
 ```
