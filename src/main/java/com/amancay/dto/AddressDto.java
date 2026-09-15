@@ -6,8 +6,8 @@ import java.util.UUID;
 public record AddressDto(
         UUID id,
         String street,
-        String number,
-        String floorApt,
+        Integer number,
+        Integer floorApt,
         String city,
         String province,
         String country,

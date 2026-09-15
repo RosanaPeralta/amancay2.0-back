@@ -27,7 +27,7 @@ import com.amancay.service.FavoriteService;
 
 import jakarta.validation.Valid;
 
-/** USR-08: favoritos del usuario autenticado. El recurso se identifica por {@code productId}. */
+/** Favoritos del usuario autenticado. El recurso se identifica por {@code productId}. */
 @RestController
 @RequestMapping("/api/me/favorites")
 @Validated

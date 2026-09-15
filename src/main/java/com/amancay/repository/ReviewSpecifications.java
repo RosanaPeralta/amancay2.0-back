@@ -12,7 +12,7 @@ import com.amancay.entity.ReviewStatus;
 import jakarta.persistence.criteria.Predicate;
 
 /**
- * Filtros opcionales del listado de moderación (REV-07). Cada filtro en {@code null} se omite,
+ * Filtros opcionales del listado de moderación. Cada filtro en {@code null} se omite,
  * así que agregar un tercero es una línea más y no el doble de ramas.
  */
 public final class ReviewSpecifications {

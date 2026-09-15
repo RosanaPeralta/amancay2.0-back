@@ -8,7 +8,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Protege las invariantes de la factory estatica {@link Review#publish}.
+ * Protege las invariantes de la factory estatica {@link Review#create}.
  *
  * <p>Que cubre: que una resenia recien creada nazca completa y valida. La factory es el unico
  * camino para construir una resenia nueva, asi que estas pruebas son las que garantizan que no
@@ -29,7 +29,7 @@ class ReviewTest {
 
     @Test
     void publishCreatesACompleteReview() {
-        Review review = Review.publish(PRODUCT_ID, USER_ID, 5, "Excelente", "La recompro");
+        Review review = Review.create(PRODUCT_ID, USER_ID, 5, "Excelente", "La recompro");
 
         assertThat(review.getId()).isNotNull();
         assertThat(review.getProductId()).isEqualTo(PRODUCT_ID);
@@ -42,15 +42,15 @@ class ReviewTest {
 
     @Test
     void publishAssignsADifferentIdToEachReview() {
-        Review first = Review.publish(PRODUCT_ID, USER_ID, 4, null, null);
-        Review second = Review.publish(PRODUCT_ID, USER_ID, 4, null, null);
+        Review first = Review.create(PRODUCT_ID, USER_ID, 4, null, null);
+        Review second = Review.create(PRODUCT_ID, USER_ID, 4, null, null);
 
         assertThat(first.getId()).isNotEqualTo(second.getId());
     }
 
     @Test
     void publishAcceptsAReviewWithoutTitleOrComment() {
-        Review review = Review.publish(PRODUCT_ID, USER_ID, 3, null, null);
+        Review review = Review.create(PRODUCT_ID, USER_ID, 3, null, null);
 
         assertThat(review.getTitle()).isNull();
         assertThat(review.getComment()).isNull();
@@ -59,14 +59,14 @@ class ReviewTest {
 
     @Test
     void publishRejectsARatingBelowTheAllowedRange() {
-        assertThatThrownBy(() -> Review.publish(PRODUCT_ID, USER_ID, 0, null, null))
+        assertThatThrownBy(() -> Review.create(PRODUCT_ID, USER_ID, 0, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("rating");
     }
 
     @Test
     void publishRejectsARatingAboveTheAllowedRange() {
-        assertThatThrownBy(() -> Review.publish(PRODUCT_ID, USER_ID, 6, null, null))
+        assertThatThrownBy(() -> Review.create(PRODUCT_ID, USER_ID, 6, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("rating");
     }
@@ -75,26 +75,26 @@ class ReviewTest {
     void publishRejectsATitleLongerThanTheColumn() {
         String tooLong = "x".repeat(151);
 
-        assertThatThrownBy(() -> Review.publish(PRODUCT_ID, USER_ID, 4, tooLong, null))
+        assertThatThrownBy(() -> Review.create(PRODUCT_ID, USER_ID, 4, tooLong, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("title");
     }
 
     @Test
     void publishRejectsAMissingProduct() {
-        assertThatThrownBy(() -> Review.publish(null, USER_ID, 4, null, null))
+        assertThatThrownBy(() -> Review.create(null, USER_ID, 4, null, null))
                 .isInstanceOf(NullPointerException.class);
     }
 
     @Test
     void publishRejectsAMissingUser() {
-        assertThatThrownBy(() -> Review.publish(PRODUCT_ID, null, 4, null, null))
+        assertThatThrownBy(() -> Review.create(PRODUCT_ID, null, 4, null, null))
                 .isInstanceOf(NullPointerException.class);
     }
 
     @Test
     void hideAndRepublishToggleTheStatusWithoutTouchingTheRest() {
-        Review review = Review.publish(PRODUCT_ID, USER_ID, 4, "Buena", null);
+        Review review = Review.create(PRODUCT_ID, USER_ID, 4, "Buena", null);
 
         review.hide();
         assertThat(review.getStatus()).isEqualTo(ReviewStatus.HIDDEN);

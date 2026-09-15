@@ -26,7 +26,7 @@ import com.amancay.service.ReviewService;
 import jakarta.validation.Valid;
 
 /**
- * REV-07: moderación de reseñas. Solo ADMIN; el rol lo resuelve {@code UserRoleAuthoritiesFilter}
+ * Moderación de reseñas. Solo ADMIN; el rol lo resuelve {@code UserRoleAuthoritiesFilter}
  * desde {@code users.role} y un BUYER recibe 403.
  */
 @RestController

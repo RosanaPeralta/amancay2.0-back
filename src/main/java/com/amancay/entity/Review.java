@@ -67,7 +67,7 @@ public class Review {
     }
 
     
-    public static Review publish(UUID productId, UUID userId, int rating, String title, String comment) {
+    public static Review create(UUID productId, UUID userId, int rating, String title, String comment) {
         Review review = new Review();
         review.id = UUID.randomUUID();
         review.productId = Objects.requireNonNull(productId, "productId is required");
@@ -80,18 +80,16 @@ public class Review {
     }
 
 
-    public void edit(int rating, String title, String comment) {
+    public void update(int rating, String title, String comment) {
         setRating(rating);
         setTitle(title);
         this.comment = comment;
     }
 
-    /** Moderación (REV-07): la reseña deja de aparecer en el listado público y en el promedio. */
     public void hide() {
         this.status = ReviewStatus.HIDDEN;
     }
 
-    /** Moderación (REV-07): revierte {@link #hide()}. */
     public void republish() {
         this.status = ReviewStatus.PUBLISHED;
     }

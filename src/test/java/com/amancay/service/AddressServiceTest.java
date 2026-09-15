@@ -32,7 +32,7 @@ class AddressServiceTest {
     private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID ADDRESS_ID = UUID.fromString("55555555-5555-5555-5555-555555555555");
 
-    private static final CreateAddressRequest CREATE = new CreateAddressRequest("Calle", "1", null, "Ciudad", null,
+    private static final CreateAddressRequest CREATE = new CreateAddressRequest("Calle", 1, null, "Ciudad", null,
             "País", null);
 
     @Mock
@@ -93,10 +93,10 @@ class AddressServiceTest {
         when(addressRepository.saveAndFlush(any(Address.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AddressDto result = addressService.update(USER_ID, ADDRESS_ID,
-                new UpdateAddressRequest("Otra", "2", "1 A", "Otra ciudad", "Prov", "País", "1000"));
+                new UpdateAddressRequest("Otra", 2, 1, "Otra ciudad", "Prov", "País", "1000"));
 
         assertThat(result.street()).isEqualTo("Otra");
-        assertThat(result.floorApt()).isEqualTo("1 A");
+        assertThat(result.floorApt()).isEqualTo(1);
     }
 
     @Test
@@ -104,7 +104,7 @@ class AddressServiceTest {
         when(addressRepository.findByIdAndUserId(ADDRESS_ID, USER_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> addressService.update(USER_ID, ADDRESS_ID,
-                new UpdateAddressRequest("Otra", "2", null, "C", null, "P", null)))
+                new UpdateAddressRequest("Otra", 2, null, "C", null, "P", null)))
                 .isInstanceOf(AddressNotFoundException.class);
         assertThatThrownBy(() -> addressService.delete(USER_ID, ADDRESS_ID))
                 .isInstanceOf(AddressNotFoundException.class);
@@ -146,6 +146,6 @@ class AddressServiceTest {
     }
 
     private Address address() {
-        return Address.create(USER_ID, "Calle", "1", null, "Ciudad", null, "País", null);
+        return Address.create(USER_ID, "Calle", 1, null, "Ciudad", null, "País", null);
     }
 }

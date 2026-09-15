@@ -60,14 +60,14 @@ public class ReviewService {
                     .orElse(null);
             throw new DuplicateReviewException(productId, existingId);
         }
-        Review review = Review.publish(productId, userId, request.rating(), request.title(), request.comment());
+        Review review = Review.create(productId, userId, request.rating(), request.title(), request.comment());
         return toDto(reviewRepository.saveAndFlush(review));
     }
 
     @Transactional
     public ReviewDto update(UUID userId, UUID reviewId, UpdateReviewRequest request) {
         Review review = findOwnedReview(userId, reviewId);
-        review.edit(request.rating(), request.title(), request.comment());
+        review.update(request.rating(), request.title(), request.comment());
         return toDto(reviewRepository.saveAndFlush(review));
     }
 
@@ -83,7 +83,7 @@ public class ReviewService {
         return toPage(reviewRepository.findByProductIdAndStatus(productId, ReviewStatus.PUBLISHED, pageable));
     }
 
-    /** REV-09: las reseñas del usuario, incluidas las ocultadas por moderación. */
+    /** Las reseñas del usuario, incluidas las ocultadas por moderación. */
     @Transactional(readOnly = true)
     public PageResponse<ReviewDto> listByUser(UUID userId, Pageable pageable) {
         return toPage(reviewRepository.findByUserId(userId, pageable));
@@ -109,7 +109,6 @@ public class ReviewService {
         return new RatingSummaryDto(average, total, distribution);
     }
 
-    // --- Moderación (REV-07) ---------------------------------------------------------------
 
     @Transactional(readOnly = true)
     public PageResponse<ReviewDto> listForModeration(ReviewStatus status, UUID productId, Pageable pageable) {

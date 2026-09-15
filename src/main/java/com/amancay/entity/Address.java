@@ -15,7 +15,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * Dirección de envío de un usuario (USR-05/06). Igual que {@link Review}, solo se construye por
+ * Dirección de envío de un usuario. Igual que {@link Review}, solo se construye por
  * la factory estática y valida sus propios campos: obligatorios calle, altura, localidad y país.
  * La predeterminada la administra {@code AddressService}; acá solo se marca y desmarca.
  */
@@ -25,8 +25,6 @@ import jakarta.persistence.Table;
 public class Address {
 
     private static final int MAX_STREET_LENGTH = 255;
-    private static final int MAX_NUMBER_LENGTH = 20;
-    private static final int MAX_FLOOR_APT_LENGTH = 50;
     private static final int MAX_CITY_LENGTH = 120;
     private static final int MAX_PROVINCE_LENGTH = 120;
     private static final int MAX_COUNTRY_LENGTH = 120;
@@ -42,11 +40,11 @@ public class Address {
     @Column(nullable = false, length = MAX_STREET_LENGTH)
     private String street;
 
-    @Column(nullable = false, length = MAX_NUMBER_LENGTH)
-    private String number;
+    @Column(nullable = false)
+    private Integer number;
 
-    @Column(name = "floor_apt", length = MAX_FLOOR_APT_LENGTH)
-    private String floorApt;
+    @Column(name = "floor_apt")
+    private Integer floorApt;
 
     @Column(nullable = false, length = MAX_CITY_LENGTH)
     private String city;
@@ -74,21 +72,21 @@ public class Address {
     protected Address() {
     }
 
-    public static Address create(UUID userId, String street, String number, String floorApt, String city,
+    public static Address create(UUID userId, String street, Integer number, Integer floorApt, String city,
             String province, String country, String postalCode) {
         Address address = new Address();
         address.id = UUID.randomUUID();
         address.userId = Objects.requireNonNull(userId, "userId is required");
         address.defaultAddress = false;
-        address.edit(street, number, floorApt, city, province, country, postalCode);
+        address.update(street, number, floorApt, city, province, country, postalCode);
         return address;
     }
 
-    public void edit(String street, String number, String floorApt, String city, String province, String country,
+    public void update(String street, Integer number, Integer floorApt, String city, String province, String country,
             String postalCode) {
         this.street = requireText(street, "street", MAX_STREET_LENGTH);
-        this.number = requireText(number, "number", MAX_NUMBER_LENGTH);
-        this.floorApt = optionalText(floorApt, "floorApt", MAX_FLOOR_APT_LENGTH);
+        this.number = requirePositive(number, "number");
+        this.floorApt = optionalNonNegative(floorApt, "floorApt");
         this.city = requireText(city, "city", MAX_CITY_LENGTH);
         this.province = optionalText(province, "province", MAX_PROVINCE_LENGTH);
         this.country = requireText(country, "country", MAX_COUNTRY_LENGTH);
@@ -101,6 +99,23 @@ public class Address {
 
     public void clearDefault() {
         this.defaultAddress = false;
+    }
+
+    private static Integer requirePositive(Integer value, String field) {
+        if (value == null) {
+            throw new IllegalArgumentException(field + " is required");
+        }
+        if (value <= 0) {
+            throw new IllegalArgumentException(field + " must be positive, but was " + value);
+        }
+        return value;
+    }
+
+    private static Integer optionalNonNegative(Integer value, String field) {
+        if (value != null && value < 0) {
+            throw new IllegalArgumentException(field + " must not be negative, but was " + value);
+        }
+        return value;
     }
 
     private static String requireText(String value, String field, int maxLength) {

@@ -14,7 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * Producto marcado como favorito por un usuario (USR-08). Es un par (usuario, producto) sin más
+ * Producto marcado como favorito por un usuario. Es un par (usuario, producto) sin más
  * estado; la unicidad la garantiza {@code uq_favorite_user_product} y {@code FavoriteService}.
  */
 @Entity

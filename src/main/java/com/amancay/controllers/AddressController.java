@@ -24,7 +24,7 @@ import com.amancay.service.AddressService;
 
 import jakarta.validation.Valid;
 
-/** USR-05/06: direcciones del usuario autenticado. Sin paginación: son a lo sumo 10. */
+/** Direcciones del usuario autenticado. Sin paginación: son a lo sumo 10. */
 @RestController
 @RequestMapping("/api/me/addresses")
 @Validated

@@ -25,7 +25,7 @@ import com.amancay.service.UserService;
 
 import jakarta.validation.Valid;
 
-/** USR-09: administración de usuarios. Solo ADMIN. */
+/** Administración de usuarios. Solo ADMIN. */
 @RestController
 @RequestMapping("/api/admin/users")
 @PreAuthorize("hasRole('ADMIN')")

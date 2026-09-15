@@ -57,7 +57,7 @@ public class UserService {
         return toDto(userRepository.saveAndFlush(user));
     }
 
-    // --- Administración (USR-09) ----------------------------------------------------------
+    // --- Administración -------------------------------------------------------------------
 
     /** Búsqueda por email o nombre; con {@code q} vacío lista todos. */
     @Transactional(readOnly = true)

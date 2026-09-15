@@ -47,7 +47,7 @@ public class AddressService {
     @Transactional
     public AddressDto update(UUID userId, UUID addressId, UpdateAddressRequest request) {
         Address address = findOwnedAddress(userId, addressId);
-        address.edit(request.street(), request.number(), request.floorApt(), request.city(), request.province(),
+        address.update(request.street(), request.number(), request.floorApt(), request.city(), request.province(),
                 request.country(), request.postalCode());
         return toDto(addressRepository.saveAndFlush(address));
     }

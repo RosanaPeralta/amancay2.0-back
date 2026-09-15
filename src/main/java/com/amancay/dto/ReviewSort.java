@@ -2,7 +2,7 @@ package com.amancay.dto;
 
 import org.springframework.data.domain.Sort;
 
-/** Órdenes que acepta el listado público de reseñas (REV-05): {@code sort=recent|best|worst}. */
+/** Órdenes que acepta el listado público de reseñas: {@code sort=recent|best|worst}. */
 public enum ReviewSort {
     RECENT(Sort.by("createdAt").descending()),
     BEST(Sort.by(Sort.Order.desc("rating"), Sort.Order.desc("createdAt"))),

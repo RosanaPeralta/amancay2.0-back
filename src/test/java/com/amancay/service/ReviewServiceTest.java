@@ -326,7 +326,7 @@ class ReviewServiceTest {
      * detalle que el dominio ahora controla.
      */
     private Review review(UUID userId, int rating) {
-        return Review.publish(PRODUCT_ID, userId, rating, null, null);
+        return Review.create(PRODUCT_ID, userId, rating, null, null);
     }
 
     private User user(UUID id, String name) {

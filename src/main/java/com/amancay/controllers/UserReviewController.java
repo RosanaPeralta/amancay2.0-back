@@ -15,7 +15,7 @@ import com.amancay.dto.ReviewDto;
 import com.amancay.security.LoggedUser;
 import com.amancay.service.ReviewService;
 
-/** REV-09: mis reseñas, incluidas las ocultadas por moderación (el DTO trae el {@code status}). */
+/** Mis reseñas, incluidas las ocultadas por moderación (el DTO trae el {@code status}). */
 @RestController
 @RequestMapping("/api/me/reviews")
 public class UserReviewController {

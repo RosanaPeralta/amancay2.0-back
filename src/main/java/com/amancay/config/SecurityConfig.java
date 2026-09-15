@@ -62,8 +62,8 @@ public class SecurityConfig {
                     BearerTokenAuthenticationFilter.class);
         }
 
-        // Runs after both authentication filters: the dev-user filter is registered before the
-        // bearer-token filter, so anything after the latter sees whichever one authenticated.
+        // Corre despues de los dos filtros de autenticacion: el del dev-user se registra antes
+        // del de bearer-token, asi que lo que va despues de este ultimo ve al que haya autenticado.
         http.addFilterAfter(new UserRoleAuthoritiesFilter(userService), BearerTokenAuthenticationFilter.class);
 
         http
