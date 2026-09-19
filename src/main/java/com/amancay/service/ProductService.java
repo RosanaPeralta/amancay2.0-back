@@ -35,10 +35,6 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final DiscountRepository discountRepository;
 
-    public ProductService(ProductRepository productRepository) {
-        this(productRepository, null);
-    }
-
     public ProductService(ProductRepository productRepository, DiscountRepository discountRepository) {
         this.productRepository = productRepository;
         this.discountRepository = discountRepository;

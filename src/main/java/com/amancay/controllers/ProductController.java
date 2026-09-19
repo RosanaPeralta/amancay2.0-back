@@ -76,14 +76,12 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{productId}/discounts")
     public ResponseEntity<ProductDto> createAndAssignDiscount(@PathVariable UUID productId, @Valid @RequestBody DiscountRequest request) {
         Product product = productService.assignDiscount(productId, discountService.create(request).getId());
         return ResponseEntity.ok(productService.getProductById(product.getId()));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{productId}/discounts/{discountId}")
     public ResponseEntity<ProductDto> assignExistingDiscount(@PathVariable UUID productId, @PathVariable Long discountId) {
         productService.assignDiscount(productId, discountId);

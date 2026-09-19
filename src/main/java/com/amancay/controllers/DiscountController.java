@@ -52,20 +52,17 @@ public class DiscountController {
                 .toList());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<DiscountResponse> create(@Valid @RequestBody DiscountRequest request) {
         Discount created = discountService.create(request);
         return ResponseEntity.created(URI.create("/api/discounts/" + created.getId())).body(toResponse(created));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<DiscountResponse> update(@PathVariable Long id, @Valid @RequestBody DiscountRequest request) {
         return ResponseEntity.ok(toResponse(discountService.update(id, request)));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         discountService.delete(id);
