@@ -32,12 +32,12 @@ class DevUserAuthenticationFilterTest {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         assertThat(authentication).isNotNull();
         assertThat(authentication.isAuthenticated()).isTrue();
-        assertThat(authentication.getPrincipal()).isEqualTo(new LoggedUser(DEV_ID, DEV_EMAIL));
+        assertThat(authentication.getPrincipal()).isEqualTo(new LoggedUser(DEV_ID, DEV_EMAIL, null));
     }
 
     @Test
     void leavesAnExistingAuthenticationUntouched() throws Exception {
-        LoggedUser realUser = new LoggedUser(UUID.randomUUID(), "real@amancay.com");
+        LoggedUser realUser = new LoggedUser(UUID.randomUUID(), "real@amancay.com", "Real");
         SecurityContextHolder.getContext().setAuthentication(new LoggedUserAuthenticationToken(realUser, null, List.of()));
 
         filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), new MockFilterChain());

@@ -66,7 +66,7 @@ class UserRoleAuthoritiesFilterTest {
     @Test
     void grantsRoleAdminToAnAdminUser() throws Exception {
         LoggedUser loggedUser = authenticate("admin@amancay.com");
-        when(userService.getOrProvisionRole(loggedUser.id(), loggedUser.email())).thenReturn(Role.ADMIN);
+        when(userService.getOrProvisionRole(loggedUser.id(), loggedUser.email(), loggedUser.name())).thenReturn(Role.ADMIN);
 
         filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), new MockFilterChain());
 
@@ -78,7 +78,7 @@ class UserRoleAuthoritiesFilterTest {
     @Test
     void grantsRoleBuyerToABuyerUser() throws Exception {
         LoggedUser loggedUser = authenticate("buyer@amancay.com");
-        when(userService.getOrProvisionRole(loggedUser.id(), loggedUser.email())).thenReturn(Role.BUYER);
+        when(userService.getOrProvisionRole(loggedUser.id(), loggedUser.email(), loggedUser.name())).thenReturn(Role.BUYER);
 
         filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), new MockFilterChain());
 
@@ -95,7 +95,7 @@ class UserRoleAuthoritiesFilterTest {
     }
 
     private LoggedUser authenticate(String email) {
-        LoggedUser loggedUser = new LoggedUser(UUID.randomUUID(), email);
+        LoggedUser loggedUser = new LoggedUser(UUID.randomUUID(), email, "Ada");
         SecurityContextHolder.getContext()
                 .setAuthentication(new LoggedUserAuthenticationToken(loggedUser, null, List.of()));
         return loggedUser;

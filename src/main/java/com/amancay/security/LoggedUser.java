@@ -2,5 +2,5 @@ package com.amancay.security;
 
 import java.util.UUID;
 
-public record LoggedUser(UUID id, String email) {
+public record LoggedUser(UUID id, String email, String name) {
 }

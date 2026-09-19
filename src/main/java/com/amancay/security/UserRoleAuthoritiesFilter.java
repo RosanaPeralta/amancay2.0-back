@@ -45,7 +45,7 @@ public class UserRoleAuthoritiesFilter extends OncePerRequestFilter {
                 && authentication.getPrincipal() instanceof LoggedUser loggedUser
                 && authentication.getAuthorities().isEmpty()) {
 
-            Role role = userService.getOrProvisionRole(loggedUser.id(), loggedUser.email());
+            Role role = userService.getOrProvisionRole(loggedUser.id(), loggedUser.email(), loggedUser.name());
             Jwt jwt = authentication.getCredentials() instanceof Jwt credentials ? credentials : null;
 
             SecurityContextHolder.getContext().setAuthentication(new LoggedUserAuthenticationToken(loggedUser, jwt,

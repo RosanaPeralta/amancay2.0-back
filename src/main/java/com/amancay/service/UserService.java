@@ -38,16 +38,21 @@ public class UserService {
             return toDto(userRepository.saveAndFlush(user));
         }
         User user = existing.get();
+        boolean changed = false;
         if (email != null && !email.equals(user.getEmail())) {
             user.setEmail(email);
-            return toDto(userRepository.saveAndFlush(user));
+            changed = true;
         }
-        return toDto(user);
+        if (name != null && user.getName() == null) {
+            user.setName(name);
+            changed = true;
+        }
+        return toDto(changed ? userRepository.saveAndFlush(user) : user);
     }
 
     @Transactional
-    public Role getOrProvisionRole(UUID id, String email) {
-        return getOrProvision(id, email, null).role();
+    public Role getOrProvisionRole(UUID id, String email, String name) {
+        return getOrProvision(id, email, name).role();
     }
 
     @Transactional

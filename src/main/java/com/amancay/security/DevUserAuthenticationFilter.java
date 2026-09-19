@@ -28,7 +28,7 @@ public class DevUserAuthenticationFilter extends OncePerRequestFilter {
     private final LoggedUser devUser;
 
     public DevUserAuthenticationFilter(UUID id, String email) {
-        this.devUser = new LoggedUser(id, email);
+        this.devUser = new LoggedUser(id, email, null);
     }
 
     @Override

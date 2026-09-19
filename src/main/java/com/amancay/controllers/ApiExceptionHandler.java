@@ -1,11 +1,14 @@
 package com.amancay.controllers;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -85,14 +88,23 @@ public class ApiExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
     }
 
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException exception) {
+        Map<String, String> fields = new LinkedHashMap<>();
+        for (FieldError fieldError : exception.getBindingResult().getFieldErrors()) {
+            fields.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+        return ResponseEntity.badRequest().body(Map.of("error", "Validation failed", "fields", fields));
+    }
+
     @ExceptionHandler(CategoryNotFoundException.class)
-    public ResponseEntity<String> handleCategoryNotFound(CategoryNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    public ResponseEntity<Map<String, String>> handleCategoryNotFound(CategoryNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
     }
 
     @ExceptionHandler(DuplicateCategoryNameException.class)
-    public ResponseEntity<String> handleDuplicateCategoryName(DuplicateCategoryNameException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    public ResponseEntity<Map<String, String>> handleDuplicateCategoryName(DuplicateCategoryNameException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

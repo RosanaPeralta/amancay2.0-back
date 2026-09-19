@@ -28,7 +28,7 @@ public class UserController {
 
     @GetMapping
     public ResponseEntity<UserDto> me(@AuthenticationPrincipal LoggedUser loggedUser) {
-        return ResponseEntity.ok(userService.getOrProvision(loggedUser.id(), loggedUser.email(), null));
+        return ResponseEntity.ok(userService.getOrProvision(loggedUser.id(), loggedUser.email(), loggedUser.name()));
     }
 
     @PatchMapping
