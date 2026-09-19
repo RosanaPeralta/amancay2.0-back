@@ -44,7 +44,7 @@ public class Address {
     private Integer number;
 
     @Column(name = "floor_apt")
-    private Integer floorApt;
+    private String floorApt;
 
     @Column(nullable = false, length = MAX_CITY_LENGTH)
     private String city;
@@ -72,7 +72,7 @@ public class Address {
     protected Address() {
     }
 
-    public static Address create(UUID userId, String street, Integer number, Integer floorApt, String city,
+    public static Address create(UUID userId, String street, Integer number, String floorApt, String city,
             String province, String country, String postalCode) {
         Address address = new Address();
         address.id = UUID.randomUUID();
@@ -82,11 +82,11 @@ public class Address {
         return address;
     }
 
-    public void update(String street, Integer number, Integer floorApt, String city, String province, String country,
+    public void update(String street, Integer number, String floorApt, String city, String province, String country,
             String postalCode) {
         this.street = requireText(street, "street", MAX_STREET_LENGTH);
         this.number = requirePositive(number, "number");
-        this.floorApt = optionalNonNegative(floorApt, "floorApt");
+        this.floorApt = optionalText(floorApt, "floorApt", 20);
         this.city = requireText(city, "city", MAX_CITY_LENGTH);
         this.province = optionalText(province, "province", MAX_PROVINCE_LENGTH);
         this.country = requireText(country, "country", MAX_COUNTRY_LENGTH);

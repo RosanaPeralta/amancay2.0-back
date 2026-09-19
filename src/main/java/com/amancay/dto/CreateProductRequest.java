@@ -18,7 +18,19 @@ public record CreateProductRequest(
         boolean active,
         @Valid List<VariantRequest> variants,
         List<@NotBlank String> imageUrls,
-        List<UUID> categoryIds) {
+        List<UUID> categoryIds,
+        Long discountId) {
+
+    public CreateProductRequest(
+            String name,
+            String shortDescription,
+            String description,
+            boolean active,
+            List<VariantRequest> variants,
+            List<String> imageUrls,
+            List<UUID> categoryIds) {
+        this(name, shortDescription, description, active, variants, imageUrls, categoryIds, null);
+    }
 
     public record VariantRequest(
             @NotNull @DecimalMin("0.00") BigDecimal price,

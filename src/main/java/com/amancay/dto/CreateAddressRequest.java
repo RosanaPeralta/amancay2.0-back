@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
 public record CreateAddressRequest(
         @NotBlank @Size(max = 255) String street,
         @NotNull @Positive Integer number,
-        @PositiveOrZero Integer floorApt,
+        @Size(max = 20) String floorApt,
         @NotBlank @Size(max = 120) String city,
         @Size(max = 120) String province,
         @NotBlank @Size(max = 120) String country,

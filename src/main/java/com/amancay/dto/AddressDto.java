@@ -7,7 +7,7 @@ public record AddressDto(
         UUID id,
         String street,
         Integer number,
-        Integer floorApt,
+        String floorApt,
         String city,
         String province,
         String country,

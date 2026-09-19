@@ -27,7 +27,7 @@ class ProductServiceTest {
 
     @BeforeEach
     void setUp() {
-        productService = new ProductService(productRepository);
+        productService = new ProductService(productRepository, null);
     }
 
     @Test
