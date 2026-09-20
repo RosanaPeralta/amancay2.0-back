@@ -101,6 +101,38 @@ class UserRoleAuthoritiesFilterTest {
         return loggedUser;
     }
 
+    @Test
+    void inactiveUserGetsJson403AndNeverReachesTheController() throws Exception {
+        LoggedUser user = authenticate("inactive@amancay.com");
+        when(userService.getOrProvisionRole(user.id(), user.email(), user.name()))
+                .thenThrow(new com.amancay.exceptions.InactiveUserException());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(new MockHttpServletRequest(), response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(response.getContentAsString()).isEqualTo("{\"error\":\"User is inactive\"}");
+        assertThat(chain.getRequest()).isNull();
+        assertThat(currentAuthentication()).isNull();
+    }
+
+    @Test
+    void databaseFailureGetsSanitizedJsonAndNeverReachesTheController() throws Exception {
+        LoggedUser user = authenticate("buyer@amancay.com");
+        when(userService.getOrProvisionRole(user.id(), user.email(), user.name()))
+                .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("private database detail"));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(new MockHttpServletRequest(), response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(503);
+        assertThat(response.getContentAsString()).isEqualTo("{\"error\":\"User authentication unavailable\"}");
+        assertThat(chain.getRequest()).isNull();
+        assertThat(currentAuthentication()).isNull();
+    }
+
     private Authentication currentAuthentication() {
         return SecurityContextHolder.getContext().getAuthentication();
     }

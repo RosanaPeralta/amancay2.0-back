@@ -11,6 +11,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.amancay.entity.Role;
 import com.amancay.service.UserService;
+import com.amancay.exceptions.InactiveUserException;
+import org.springframework.dao.DataAccessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -28,6 +32,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * están autenticadas se dejan intactas, por lo que los endpoints públicos nunca consultan la base de datos.
  */
 public class UserRoleAuthoritiesFilter extends OncePerRequestFilter {
+    private static final Logger log = LoggerFactory.getLogger(UserRoleAuthoritiesFilter.class);
 
     private final UserService userService;
 
@@ -45,7 +50,17 @@ public class UserRoleAuthoritiesFilter extends OncePerRequestFilter {
                 && authentication.getPrincipal() instanceof LoggedUser loggedUser
                 && authentication.getAuthorities().isEmpty()) {
 
-            Role role = userService.getOrProvisionRole(loggedUser.id(), loggedUser.email(), loggedUser.name());
+            Role role;
+            try {
+                role = userService.getOrProvisionRole(loggedUser.id(), loggedUser.email(), loggedUser.name());
+            } catch (InactiveUserException exception) {
+                reject(response, HttpServletResponse.SC_FORBIDDEN, "User is inactive");
+                return;
+            } catch (DataAccessException exception) {
+                log.error("Unable to resolve authenticated user", exception);
+                reject(response, HttpServletResponse.SC_SERVICE_UNAVAILABLE, "User authentication unavailable");
+                return;
+            }
             Jwt jwt = authentication.getCredentials() instanceof Jwt credentials ? credentials : null;
 
             SecurityContextHolder.getContext().setAuthentication(new LoggedUserAuthenticationToken(loggedUser, jwt,
@@ -53,6 +68,13 @@ public class UserRoleAuthoritiesFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private static void reject(HttpServletResponse response, int status, String message) throws IOException {
+        SecurityContextHolder.clearContext();
+        response.setStatus(status);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\":\"" + message + "\"}");
     }
 
     @Override

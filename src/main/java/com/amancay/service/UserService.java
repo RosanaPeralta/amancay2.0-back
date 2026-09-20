@@ -14,6 +14,7 @@ import com.amancay.dto.UserDto;
 import com.amancay.entity.Role;
 import com.amancay.entity.User;
 import com.amancay.exceptions.SelfRoleChangeException;
+import com.amancay.exceptions.InactiveUserException;
 import com.amancay.exceptions.UserNotFoundException;
 import com.amancay.repository.UserRepository;
 
@@ -29,15 +30,13 @@ public class UserService {
     public UserDto getOrProvision(UUID id, String email, String name) {
         Optional<User> existing = userRepository.findById(id);
         if (existing.isEmpty()) {
-            User user = new User();
-            user.setId(id);
-            user.setEmail(email);
-            user.setName(name);
-            user.setRole(Role.BUYER);
-            user.setActive(true);
-            return toDto(userRepository.saveAndFlush(user));
+            userRepository.insertIfAbsent(id, email, name);
+            existing = Optional.of(findUser(id));
         }
         User user = existing.get();
+        if (!user.isActive()) {
+            throw new InactiveUserException();
+        }
         boolean changed = false;
         if (email != null && !email.equals(user.getEmail())) {
             user.setEmail(email);
