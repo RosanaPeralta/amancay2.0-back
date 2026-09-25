@@ -13,15 +13,19 @@ import com.amancay.entity.Address;
 import com.amancay.exceptions.AddressLimitReachedException;
 import com.amancay.exceptions.AddressNotFoundException;
 import com.amancay.repository.AddressRepository;
+import com.amancay.repository.UserRepository;
+import com.amancay.exceptions.UserNotFoundException;
 
 @Service
 public class AddressService {
     static final int MAX_ADDRESSES_PER_USER = 10;
 
     private final AddressRepository addressRepository;
+    private final UserRepository userRepository;
 
-    public AddressService(AddressRepository addressRepository) {
+    public AddressService(AddressRepository addressRepository, UserRepository userRepository) {
         this.addressRepository = addressRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -32,6 +36,7 @@ public class AddressService {
     /** La primera dirección del usuario queda como predeterminada sin que tenga que marcarla. */
     @Transactional
     public AddressDto create(UUID userId, CreateAddressRequest request) {
+        lockUser(userId);
         long existing = addressRepository.countByUserId(userId);
         if (existing >= MAX_ADDRESSES_PER_USER) {
             throw new AddressLimitReachedException(MAX_ADDRESSES_PER_USER);
@@ -55,16 +60,23 @@ public class AddressService {
     /** Borrar la predeterminada no promueve otra: el usuario elige la siguiente explícitamente. */
     @Transactional
     public void delete(UUID userId, UUID addressId) {
+        lockUser(userId);
         addressRepository.delete(findOwnedAddress(userId, addressId));
     }
 
     @Transactional
     public AddressDto setDefault(UUID userId, UUID addressId) {
+        lockUser(userId);
         addressRepository.clearDefaultByUserId(userId);
         // Se busca después del UPDATE: si no existe, la excepción revierte también el clear.
         Address address = findOwnedAddress(userId, addressId);
         address.markDefault();
         return toDto(addressRepository.saveAndFlush(address));
+    }
+
+    private void lockUser(UUID userId) {
+        // All address-count/default changes lock the same existing parent row until commit.
+        userRepository.findByIdForUpdate(userId).orElseThrow(() -> new UserNotFoundException(userId));
     }
 
     private Address findOwnedAddress(UUID userId, UUID addressId) {
