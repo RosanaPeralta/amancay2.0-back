@@ -45,8 +45,8 @@ class UserServiceTest {
     @Test
     void provisionsNewUserWithBuyerRole() {
         UUID id = UUID.randomUUID();
-        when(userRepository.findById(id)).thenReturn(Optional.empty());
-        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.findById(id)).thenReturn(Optional.empty(),
+                Optional.of(existingUser(id, "buyer@amancay.com", "Ada")));
 
         UserDto result = userService.getOrProvision(id, "buyer@amancay.com", "Ada");
 
@@ -54,6 +54,35 @@ class UserServiceTest {
         assertThat(result.email()).isEqualTo("buyer@amancay.com");
         assertThat(result.name()).isEqualTo("Ada");
         assertThat(result.role()).isEqualTo(Role.BUYER);
+        verify(userRepository).insertIfAbsent(id, "buyer@amancay.com", "Ada");
+    }
+
+    @Test
+    void concurrentProvisionReadsTheWinningUserWithoutReplacingTheirRole() {
+        UUID id = UUID.randomUUID();
+        User winner = existingUser(id, "buyer@amancay.com", "Ada");
+        winner.setRole(Role.ADMIN);
+        when(userRepository.findById(id)).thenReturn(Optional.empty(), Optional.of(winner));
+        when(userRepository.insertIfAbsent(id, "buyer@amancay.com", "Ada")).thenReturn(0);
+
+        assertThat(userService.getOrProvisionRole(id, "buyer@amancay.com", "Ada")).isEqualTo(Role.ADMIN);
+        verify(userRepository, never()).saveAndFlush(any(User.class));
+    }
+
+    @Test
+    void rejectsInactiveBuyersAndAdminsBeforeSynchronizingTheirProfile() {
+        for (Role role : Role.values()) {
+            UUID id = UUID.randomUUID();
+            User user = existingUser(id, "old@amancay.com", "Ada");
+            user.setRole(role);
+            user.setActive(false);
+            when(userRepository.findById(id)).thenReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> userService.getOrProvisionRole(id, "new@amancay.com", "Grace"))
+                    .isInstanceOf(com.amancay.exceptions.InactiveUserException.class);
+            assertThat(user.getEmail()).isEqualTo("old@amancay.com");
+        }
+        verify(userRepository, never()).saveAndFlush(any(User.class));
     }
 
     @Test

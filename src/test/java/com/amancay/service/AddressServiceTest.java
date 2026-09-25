@@ -26,6 +26,8 @@ import com.amancay.entity.Address;
 import com.amancay.exceptions.AddressLimitReachedException;
 import com.amancay.exceptions.AddressNotFoundException;
 import com.amancay.repository.AddressRepository;
+import com.amancay.repository.UserRepository;
+import com.amancay.entity.User;
 
 @ExtendWith(MockitoExtension.class)
 class AddressServiceTest {
@@ -37,12 +39,16 @@ class AddressServiceTest {
 
     @Mock
     private AddressRepository addressRepository;
+    @Mock
+    private UserRepository userRepository;
 
     private AddressService addressService;
 
     @BeforeEach
     void setUp() {
-        addressService = new AddressService(addressRepository);
+        addressService = new AddressService(addressRepository, userRepository);
+        org.mockito.Mockito.lenient().when(userRepository.findByIdForUpdate(USER_ID))
+                .thenReturn(Optional.of(new User()));
     }
 
     @Test
@@ -55,6 +61,10 @@ class AddressServiceTest {
         assertThat(result.id()).isNotNull();
         assertThat(result.street()).isEqualTo("Calle");
         assertThat(result.isDefault()).isTrue();
+        InOrder order = inOrder(userRepository, addressRepository);
+        order.verify(userRepository).findByIdForUpdate(USER_ID);
+        order.verify(addressRepository).countByUserId(USER_ID);
+        order.verify(addressRepository).saveAndFlush(any(Address.class));
     }
 
     @Test
