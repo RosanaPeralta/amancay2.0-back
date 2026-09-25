@@ -19,7 +19,7 @@ class AddressTest {
 
     @Test
     void createBuildsACompleteNonDefaultAddress() {
-        Address address = Address.create(USER_ID, "Av. Siempreviva", 742, 3, "Springfield", "Buenos Aires",
+        Address address = Address.create(USER_ID, "Av. Siempreviva", 742, "3 A", "Springfield", "Buenos Aires",
                 "Argentina", "1234");
 
         assertThat(address.getId()).isNotNull();
@@ -63,14 +63,6 @@ class AddressTest {
     }
 
     @Test
-    void createRejectsNonPositiveNumberAndNegativeFloor() {
-        assertThatThrownBy(() -> Address.create(USER_ID, "Calle", 0, null, "Ciudad", null, "País", null))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("number");
-        assertThatThrownBy(() -> Address.create(USER_ID, "Calle", 1, -1, "Ciudad", null, "País", null))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("floorApt");
-    }
-
-    @Test
     void createRejectsAMissingUser() {
         assertThatThrownBy(() -> Address.create(null, "Calle", 1, null, "Ciudad", null, "País", null))
                 .isInstanceOf(NullPointerException.class);
@@ -82,7 +74,7 @@ class AddressTest {
         UUID id = address.getId();
         address.markDefault();
 
-        address.update("Otra", 2, 0, "Otra ciudad", "Otra prov", "Otro país", "9999");
+        address.update("Otra", 2, "4 B", "Otra ciudad", "Otra prov", "Otro país", "9999");
 
         assertThat(address.getId()).isEqualTo(id);
         assertThat(address.getStreet()).isEqualTo("Otra");

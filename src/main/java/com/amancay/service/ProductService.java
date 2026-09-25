@@ -14,24 +14,30 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.amancay.dto.CreateProductRequest;
+import com.amancay.dto.DiscountResponse;
 import com.amancay.dto.PageResponse;
 import com.amancay.dto.ProductDto;
 import com.amancay.dto.ProductImageDto;
 import com.amancay.dto.ProductSummaryDto;
 import com.amancay.dto.ProductVariantDto;
 import com.amancay.dto.UpdateProductRequest;
+import com.amancay.entity.Discount;
 import com.amancay.entity.Product;
 import com.amancay.entity.ProductImage;
 import com.amancay.entity.ProductVariant;
+import com.amancay.exceptions.DiscountNotFoundException;
 import com.amancay.exceptions.ProductNotFoundException;
+import com.amancay.repository.DiscountRepository;
 import com.amancay.repository.ProductRepository;
 
 @Service
 public class ProductService {
     private final ProductRepository productRepository;
+    private final DiscountRepository discountRepository;
 
-    public ProductService(ProductRepository productRepository) {
+    public ProductService(ProductRepository productRepository, DiscountRepository discountRepository) {
         this.productRepository = productRepository;
+        this.discountRepository = discountRepository;
     }
 
     @Transactional
@@ -56,6 +62,9 @@ public class ProductService {
             });
         }
         product.setCategoryIds(request.categoryIds() == null ? new HashSet<>() : new HashSet<>(request.categoryIds()));
+        if (request.discountId() != null && discountRepository != null) {
+            product.setDiscount(findDiscount(request.discountId()));
+        }
         return toDto(productRepository.save(product));
     }
 
@@ -103,6 +112,9 @@ public class ProductService {
         product.getImages().removeIf(image -> image.getId() != null && !requestedImageIds.contains(image.getId()));
 
         product.setCategoryIds(request.categoryIds() == null ? new HashSet<>() : new HashSet<>(request.categoryIds()));
+        if (request.discountId() != null && discountRepository != null) {
+            product.setDiscount(findDiscount(request.discountId()));
+        }
 
         return toDto(productRepository.save(product));
     }
@@ -143,8 +155,29 @@ public class ProductService {
         productRepository.delete(product);
     }
 
+    @Transactional
+    public Product assignDiscount(UUID productId, Long discountId) {
+        Product product = findProduct(productId);
+        product.setDiscount(findDiscount(discountId));
+        return productRepository.save(product);
+    }
+
+    @Transactional
+    public Product removeDiscount(UUID productId) {
+        Product product = findProduct(productId);
+        product.setDiscount(null);
+        return productRepository.save(product);
+    }
+
     private Product findProduct(UUID id) {
         return productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
+    }
+
+    private Discount findDiscount(Long id) {
+        if (discountRepository == null) {
+            throw new IllegalStateException("Discount repository is not configured");
+        }
+        return discountRepository.findById(id).orElseThrow(() -> new DiscountNotFoundException(id));
     }
 
     private String generateUniqueSlug(String name, UUID currentId) {
@@ -181,8 +214,12 @@ public class ProductService {
         List<ProductImageDto> images = product.getImages().stream()
                 .map(image -> new ProductImageDto(image.getId(), image.getImageUrl()))
                 .toList();
+        DiscountResponse discount = product.getDiscount() == null ? null
+                : new DiscountResponse(product.getDiscount().getId(), product.getDiscount().getPercentage(),
+                        product.getDiscount().getDescription());
         return new ProductDto(product.getId(), product.getName(), product.getSlug(), product.getShortDescription(),
                 product.getDescription(), product.isActive(),
-                product.getCreatedAt(), product.getUpdatedAt(), variants, images, List.copyOf(product.getCategoryIds()));
+                product.getCreatedAt(), product.getUpdatedAt(), variants, images, List.copyOf(product.getCategoryIds()),
+                discount);
     }
 }
