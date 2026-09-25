@@ -93,7 +93,7 @@ class AddressServiceTest {
         when(addressRepository.saveAndFlush(any(Address.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AddressDto result = addressService.update(USER_ID, ADDRESS_ID,
-                new UpdateAddressRequest("Otra", 2, 1, "Otra ciudad", "Prov", "País", "1000"));
+                new UpdateAddressRequest("Otra", 2, "A", "Otra ciudad", "Prov", "País", "1000"));
 
         assertThat(result.street()).isEqualTo("Otra");
         assertThat(result.floorApt()).isEqualTo(1);

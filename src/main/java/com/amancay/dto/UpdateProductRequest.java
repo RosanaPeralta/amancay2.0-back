@@ -18,7 +18,19 @@ public record UpdateProductRequest(
         boolean active,
         @Valid List<VariantRequest> variants,
         @Valid List<ImageRequest> images,
-        List<UUID> categoryIds) {
+        List<UUID> categoryIds,
+        Long discountId) {
+
+    public UpdateProductRequest(
+            String name,
+            String shortDescription,
+            String description,
+            boolean active,
+            List<VariantRequest> variants,
+            List<ImageRequest> images,
+            List<UUID> categoryIds) {
+        this(name, shortDescription, description, active, variants, images, categoryIds, null);
+    }
 
     public record VariantRequest(
             UUID id,

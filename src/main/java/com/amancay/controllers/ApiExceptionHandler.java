@@ -12,10 +12,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.amancay.exceptions.AddressLimitReachedException;
 import com.amancay.exceptions.AddressNotFoundException;
 import com.amancay.exceptions.CategoryNotFoundException;
+import com.amancay.exceptions.DiscountNotFoundException;
 import com.amancay.exceptions.DuplicateCategoryNameException;
 import com.amancay.exceptions.DuplicateFavoriteException;
 import com.amancay.exceptions.DuplicateReviewException;
 import com.amancay.exceptions.FavoriteNotFoundException;
+import com.amancay.exceptions.InvalidOrderStatusTransitionException;
+import com.amancay.exceptions.OrderNotFoundException;
 import com.amancay.exceptions.ProductNotFoundException;
 import com.amancay.exceptions.PurchaseRequiredException;
 import com.amancay.exceptions.ReviewNotFoundException;
@@ -26,6 +29,11 @@ import com.amancay.exceptions.UserNotFoundException;
 public class ApiExceptionHandler {
     @ExceptionHandler(ProductNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotFound(ProductNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(DiscountNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleDiscountNotFound(DiscountNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
     }
 
@@ -93,6 +101,21 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DuplicateCategoryNameException.class)
     public ResponseEntity<String> handleDuplicateCategoryName(DuplicateCategoryNameException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(OrderNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleOrderNotFound(OrderNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidOrderStatusTransitionException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidOrderStatusTransition(InvalidOrderStatusTransitionException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

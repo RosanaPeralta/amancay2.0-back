@@ -40,12 +40,24 @@ Para levantar el proyecto usando una base compartida:
 No es necesario modificar `application.properties`. Cada integrante debe configurar sus propias variables en el terminal de PowerShell de Visual Studio Code. Reemplazar los valores de ejemplo por los datos reales de Supabase:
 
 ```powershell
+$env:SUPABASE_URL="https://<project-ref>.supabase.co"
+$env:SUPABASE_JWT_SECRET="<JWT_SECRET>"
 $env:SPRING_DATASOURCE_URL="jdbc:postgresql://HOST_SUPABASE:PUERTO_SUPABASE/postgres?sslmode=require"
 $env:DB_USER="USUARIO_SUPABASE"
 $env:DB_PASSWORD="CONTRASEÑA_SUPABASE"
 
 ./mvnw.cmd spring-boot:run
 ```
+
+La supabase_URL sale de:
+ Ingresar a Project Settings desde supabase.
+ Dentro de la sección Configuration, haz clic en API.
+ En la sección Project URL esta con un formato similar a: [https://xxxxxxxxxxxxxxxxxxxx.supabase.co]
+
+ La SUPABASE_JWT_SECRET sale de:
+ Ingresar a Project Settings desde supabase.
+ Dentro de la seccion JWT Keys.
+ Copiar la KeyId
 
 El schema **vive en Supabase** y la aplicación solo lo valida al arrancar (`spring.jpa.hibernate.ddl-auto=validate`). No hay migraciones automáticas: los cambios de schema se aplican en el SQL Editor de Supabase.
 
