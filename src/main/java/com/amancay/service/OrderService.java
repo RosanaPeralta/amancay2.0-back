@@ -22,6 +22,7 @@ import com.amancay.entity.Role;
 import com.amancay.entity.ProductVariant;
 import com.amancay.entity.User;
 import com.amancay.event.OrderStatusChangedEvent;
+import com.amancay.exceptions.InsufficientStockException;
 import com.amancay.exceptions.OrderNotFoundException;
 import com.amancay.exceptions.UserNotFoundException;
 import com.amancay.repository.OrderRepository;
@@ -88,6 +89,9 @@ public class OrderService {
             }
 
             ProductVariant variant = findProductVariant(itemRequest.productVariantId());
+            if (productVariantRepository.decrementStock(variant.getId(), itemRequest.quantity()) == 0) {
+                throw new InsufficientStockException(variant.getId());
+            }
             OrderItem item = new OrderItem();
             item.setProductVariant(variant);
             item.setQuantity(itemRequest.quantity());

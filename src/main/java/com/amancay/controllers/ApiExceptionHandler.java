@@ -20,6 +20,7 @@ import com.amancay.exceptions.DuplicateCategoryNameException;
 import com.amancay.exceptions.DuplicateFavoriteException;
 import com.amancay.exceptions.DuplicateReviewException;
 import com.amancay.exceptions.FavoriteNotFoundException;
+import com.amancay.exceptions.InsufficientStockException;
 import com.amancay.exceptions.InvalidOrderStatusTransitionException;
 import com.amancay.exceptions.OrderNotFoundException;
 import com.amancay.exceptions.PaymentNotFoundException;
@@ -128,6 +129,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<Map<String, String>> handleInsufficientStock(InsufficientStockException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
     }
 
