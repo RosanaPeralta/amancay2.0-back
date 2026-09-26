@@ -9,8 +9,10 @@ paths:
       parameters:
         - {name: page, in: query, schema: {type: integer, default: 0}}
         - {name: size, in: query, schema: {type: integer, default: 20}}
-        - {name: q, in: query, schema: {type: string}}
+        - {name: name, in: query, description: Case-insensitive partial match on product name, schema: {type: string}}
+        - {name: category_id, in: query, schema: {type: string, format: uuid}}
         - {name: is_active, in: query, schema: {type: boolean}}
+        - {name: sort, in: query, schema: {type: string, enum: [name, name_desc, newest], default: name}}
       responses:
         '200': {description: Product page}
     post:

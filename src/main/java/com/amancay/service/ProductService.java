@@ -29,6 +29,7 @@ import com.amancay.exceptions.DiscountNotFoundException;
 import com.amancay.exceptions.ProductNotFoundException;
 import com.amancay.repository.DiscountRepository;
 import com.amancay.repository.ProductRepository;
+import com.amancay.repository.ProductSpecifications;
 
 @Service
 public class ProductService {
@@ -125,19 +126,10 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<ProductSummaryDto> listProducts(Pageable pageable, Optional<String> query, Optional<Boolean> active) {
-        Page<Product> products;
-        if (query.isPresent() && active.isPresent()) {
-            String value = query.get();
-            products = productRepository.searchByActive(active.get(), value, pageable);
-        } else if (query.isPresent()) {
-            String value = query.get();
-            products = productRepository.searchByNameOrSlug(value, pageable);
-        } else if (active.isPresent()) {
-            products = productRepository.findByActive(active.get(), pageable);
-        } else {
-            products = productRepository.findAll(pageable);
-        }
+    public PageResponse<ProductSummaryDto> listProducts(Pageable pageable, Optional<String> name, Optional<UUID> categoryId,
+            Optional<Boolean> active) {
+        Page<Product> products = productRepository.findAll(
+                ProductSpecifications.matching(name.orElse(null), categoryId.orElse(null), active.orElse(null)), pageable);
         return new PageResponse<>(products.map(product -> new ProductSummaryDto(
                 product.getId(),
                 product.getName(),
