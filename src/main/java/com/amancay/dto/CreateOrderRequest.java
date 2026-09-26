@@ -8,7 +8,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record CreateOrderRequest(
-        UUID userId,
         @NotNull UUID shippingAddressId,
         @NotNull @Valid @Size(min = 1) List<ItemRequest> items) {
 

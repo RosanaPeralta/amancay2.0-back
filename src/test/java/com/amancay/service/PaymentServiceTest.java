@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 import com.amancay.dto.ConfirmPaymentRequest;
 import com.amancay.dto.CreatePaymentRequest;
@@ -35,6 +37,7 @@ class PaymentServiceTest {
 
     private static final UUID ORDER_ID = UUID.fromString("55555555-5555-5555-5555-555555555555");
     private static final UUID PAYMENT_ID = UUID.fromString("66666666-6666-6666-6666-666666666666");
+    private static final UUID REQUESTER_ID = UUID.fromString("77777777-7777-7777-7777-777777777777");
 
     @Mock
     private PaymentRepository paymentRepository;
@@ -67,10 +70,11 @@ class PaymentServiceTest {
         when(processor.process(order, request)).thenReturn(PaymentResult.approved());
         when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        PaymentDto result = paymentService.createPayment(ORDER_ID, request);
+        PaymentDto result = paymentService.createPayment(REQUESTER_ID, ORDER_ID, request);
 
         assertThat(result.status()).isEqualTo(PaymentStatus.APROBADO);
         assertThat(result.amount()).isEqualByComparingTo("200");
+        verify(orderService).getOrder(REQUESTER_ID, ORDER_ID, null);
         verify(orderService).changeStatus(ORDER_ID, OrderStatus.EN_PREPARACION);
     }
 
@@ -83,7 +87,7 @@ class PaymentServiceTest {
         when(processor.process(order, request)).thenReturn(PaymentResult.rejected("Card declined (simulated)"));
         when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        PaymentDto result = paymentService.createPayment(ORDER_ID, request);
+        PaymentDto result = paymentService.createPayment(REQUESTER_ID, ORDER_ID, request);
 
         assertThat(result.status()).isEqualTo(PaymentStatus.RECHAZADO);
         assertThat(result.reason()).isEqualTo("Card declined (simulated)");
@@ -98,7 +102,7 @@ class PaymentServiceTest {
         order.addPayment(approved);
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
 
-        assertThatThrownBy(() -> paymentService.createPayment(ORDER_ID, cardRequest()))
+        assertThatThrownBy(() -> paymentService.createPayment(REQUESTER_ID, ORDER_ID, cardRequest()))
                 .isInstanceOf(IllegalStateException.class);
         verify(paymentRepository, never()).saveAndFlush(any());
     }
@@ -107,8 +111,18 @@ class PaymentServiceTest {
     void unknownOrderIsReportedAsNotFound() {
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> paymentService.createPayment(ORDER_ID, cardRequest()))
+        assertThatThrownBy(() -> paymentService.createPayment(REQUESTER_ID, ORDER_ID, cardRequest()))
                 .isInstanceOf(OrderNotFoundException.class);
+    }
+
+    @Test
+    void cannotPayAnotherUsersOrder() {
+        when(orderService.getOrder(REQUESTER_ID, ORDER_ID, null))
+                .thenThrow(new AccessDeniedException("No tienes permisos para ver esta orden"));
+
+        assertThatThrownBy(() -> paymentService.createPayment(REQUESTER_ID, ORDER_ID, cardRequest()))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(paymentRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -121,9 +135,10 @@ class PaymentServiceTest {
         when(processor.process(order, request)).thenReturn(PaymentResult.approved());
         when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        PaymentDto result = paymentService.retryPayment(PAYMENT_ID, request);
+        PaymentDto result = paymentService.retryPayment(REQUESTER_ID, PAYMENT_ID, request);
 
         assertThat(result.status()).isEqualTo(PaymentStatus.APROBADO);
+        verify(orderService).getOrder(REQUESTER_ID, ORDER_ID, null);
         verify(orderService).changeStatus(ORDER_ID, OrderStatus.EN_PREPARACION);
     }
 
@@ -133,7 +148,7 @@ class PaymentServiceTest {
         Payment approved = payment(PAYMENT_ID, order, PaymentStatus.APROBADO);
         when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(approved));
 
-        assertThatThrownBy(() -> paymentService.retryPayment(PAYMENT_ID, cardRequest()))
+        assertThatThrownBy(() -> paymentService.retryPayment(REQUESTER_ID, PAYMENT_ID, cardRequest()))
                 .isInstanceOf(IllegalStateException.class);
     }
 
@@ -141,8 +156,41 @@ class PaymentServiceTest {
     void unknownPaymentIsReportedAsNotFoundOnRetry() {
         when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> paymentService.retryPayment(PAYMENT_ID, cardRequest()))
+        assertThatThrownBy(() -> paymentService.retryPayment(REQUESTER_ID, PAYMENT_ID, cardRequest()))
                 .isInstanceOf(PaymentNotFoundException.class);
+    }
+
+    @Test
+    void cannotRetryAnotherUsersPayment() {
+        Order order = order(ORDER_ID, BigDecimal.valueOf(200));
+        Payment rejected = payment(PAYMENT_ID, order, PaymentStatus.RECHAZADO);
+        when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(rejected));
+        when(orderService.getOrder(REQUESTER_ID, ORDER_ID, null))
+                .thenThrow(new AccessDeniedException("No tienes permisos para ver esta orden"));
+
+        assertThatThrownBy(() -> paymentService.retryPayment(REQUESTER_ID, PAYMENT_ID, cardRequest()))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(paymentRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void listsPaymentsOfOwnOrder() {
+        Payment payment = payment(PAYMENT_ID, order(ORDER_ID, BigDecimal.valueOf(200)), PaymentStatus.APROBADO);
+        when(paymentRepository.findByOrderIdOrderByCreatedAtDesc(ORDER_ID)).thenReturn(List.of(payment));
+
+        List<PaymentDto> result = paymentService.listByOrder(REQUESTER_ID, ORDER_ID);
+
+        assertThat(result).hasSize(1);
+        verify(orderService).getOrder(REQUESTER_ID, ORDER_ID, null);
+    }
+
+    @Test
+    void cannotListPaymentsOfAnotherUsersOrder() {
+        when(orderService.getOrder(REQUESTER_ID, ORDER_ID, null))
+                .thenThrow(new AccessDeniedException("No tienes permisos para ver esta orden"));
+
+        assertThatThrownBy(() -> paymentService.listByOrder(REQUESTER_ID, ORDER_ID))
+                .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test

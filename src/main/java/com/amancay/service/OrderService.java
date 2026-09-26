@@ -62,18 +62,6 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderDto> listOrders(UUID userId) {
-        if (userId == null) {
-            return orderRepository.findAll().stream()
-                    .map(this::toDto)
-                    .toList();
-        }
-        return orderRepository.findByUserId(userId).stream()
-                .map(this::toDto)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
     public OrderDto getOrder(UUID requesterId, UUID orderId, UUID requestedUserId) {
         UUID targetUserId = resolveTargetUserId(requesterId, requestedUserId);
         Order order = findOrder(orderId);
@@ -83,19 +71,10 @@ public class OrderService {
         return toDto(order);
     }
 
-    @Transactional(readOnly = true)
-    public OrderDto getOrder(UUID orderId, UUID userId) {
-        Order order = findOrder(orderId);
-        if (userId != null && !order.getUserId().equals(userId)) {
-            throw new AccessDeniedException("The order does not belong to the requested user");
-        }
-        return toDto(order);
-    }
-
     @Transactional
-    public OrderDto createOrder(CreateOrderRequest request) {
+    public OrderDto createOrder(UUID requesterId, CreateOrderRequest request) {
         Order order = new Order();
-        order.setUserId(request.userId());
+        order.setUserId(requesterId);
         order.setShippingAddressId(request.shippingAddressId());
         order.setShippingAddress(toShippingAddress(findAddress(request.shippingAddressId())));
         order.setSubtotal(BigDecimal.ZERO);
