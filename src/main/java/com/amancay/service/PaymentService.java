@@ -35,7 +35,8 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public List<PaymentDto> listByOrder(UUID orderId) {
+    public List<PaymentDto> listByOrder(UUID requesterId, UUID orderId) {
+        orderService.getOrder(requesterId, orderId, null);
         return paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId).stream()
                 .map(payment -> toDto(payment, null))
                 .toList();
@@ -44,7 +45,8 @@ public class PaymentService {
     // Un Order solo puede tener un pago aprobado (ver Payment: cada intento
     // fallido queda registrado, pero una vez aprobado no se puede volver a cobrar).
     @Transactional
-    public PaymentDto createPayment(UUID orderId, CreatePaymentRequest request) {
+    public PaymentDto createPayment(UUID requesterId, UUID orderId, CreatePaymentRequest request) {
+        orderService.getOrder(requesterId, orderId, null);
         Order order = findOrder(orderId);
 
         boolean alreadyApproved = order.getPayments().stream()
@@ -59,8 +61,9 @@ public class PaymentService {
     // Reintentar = un nuevo intento (nuevo Payment) para la misma orden del pago
     // rechazado, no una actualizacion del pago viejo.
     @Transactional
-    public PaymentDto retryPayment(UUID paymentId, CreatePaymentRequest request) {
+    public PaymentDto retryPayment(UUID requesterId, UUID paymentId, CreatePaymentRequest request) {
         Payment failedPayment = findPayment(paymentId);
+        orderService.getOrder(requesterId, failedPayment.getOrder().getId(), null);
         if (failedPayment.getStatus() != PaymentStatus.RECHAZADO) {
             throw new IllegalStateException("Only a rejected payment can be retried");
         }

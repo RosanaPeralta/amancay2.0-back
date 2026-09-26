@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -15,10 +17,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.amancay.dto.ConfirmPaymentRequest;
 import com.amancay.dto.CreatePaymentRequest;
 import com.amancay.dto.PaymentDto;
+import com.amancay.security.LoggedUser;
 import com.amancay.service.PaymentService;
 
 import jakarta.validation.Valid;
 
+/**
+ * Pagos del usuario autenticado. Igual que {@code OrderController}, el dueno de la orden
+ * se valida contra {@link LoggedUser} (JWT), nunca contra un id que mande el cliente.
+ */
 @RestController
 @Validated
 public class PaymentController {
@@ -30,24 +37,31 @@ public class PaymentController {
     }
 
     @GetMapping("/api/orders/{orderId}/payments")
-    public ResponseEntity<List<PaymentDto>> listByOrder(@PathVariable UUID orderId) {
-        return ResponseEntity.ok(paymentService.listByOrder(orderId));
+    public ResponseEntity<List<PaymentDto>> listByOrder(
+            @AuthenticationPrincipal LoggedUser loggedUser,
+            @PathVariable UUID orderId) {
+        return ResponseEntity.ok(paymentService.listByOrder(loggedUser.id(), orderId));
     }
 
     @PostMapping("/api/orders/{orderId}/payments")
-    public ResponseEntity<PaymentDto> create(@PathVariable UUID orderId,
+    public ResponseEntity<PaymentDto> create(
+            @AuthenticationPrincipal LoggedUser loggedUser,
+            @PathVariable UUID orderId,
             @Valid @RequestBody CreatePaymentRequest request) {
-        return ResponseEntity.ok(paymentService.createPayment(orderId, request));
+        return ResponseEntity.ok(paymentService.createPayment(loggedUser.id(), orderId, request));
     }
 
     @PostMapping("/api/payments/{paymentId}/retry")
-    public ResponseEntity<PaymentDto> retry(@PathVariable UUID paymentId,
+    public ResponseEntity<PaymentDto> retry(
+            @AuthenticationPrincipal LoggedUser loggedUser,
+            @PathVariable UUID paymentId,
             @Valid @RequestBody CreatePaymentRequest request) {
-        return ResponseEntity.ok(paymentService.retryPayment(paymentId, request));
+        return ResponseEntity.ok(paymentService.retryPayment(loggedUser.id(), paymentId, request));
     }
 
-    // Sin @PreAuthorize todavia a proposito: la seguridad de este modulo (igual
-    // que la de OrderController) se resuelve junto en la Fase 2, no aca.
+    // Confirmar un pago pendiente es una accion de back-office (alguien reviso que la
+    // transferencia llego), no algo que el comprador dueno de la orden pueda hacer.
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/api/payments/{paymentId}/confirm")
     public ResponseEntity<PaymentDto> confirm(@PathVariable UUID paymentId,
             @Valid @RequestBody ConfirmPaymentRequest request) {

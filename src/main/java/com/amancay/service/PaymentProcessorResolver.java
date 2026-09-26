@@ -15,14 +15,11 @@ public class PaymentProcessorResolver {
     private final Map<PaymentMethod, PaymentProcessor> processorsByMethod;
 
     public PaymentProcessorResolver(CardPaymentProcessor cardPaymentProcessor,
-            InstantApprovalPaymentProcessor instantApprovalPaymentProcessor,
             ManualConfirmationPaymentProcessor manualConfirmationPaymentProcessor) {
         this.processorsByMethod = Map.of(
                 PaymentMethod.TARJETA_CREDITO, cardPaymentProcessor,
                 PaymentMethod.TARJETA_DEBITO, cardPaymentProcessor,
-                PaymentMethod.MERCADO_PAGO, instantApprovalPaymentProcessor,
-                PaymentMethod.TRANSFERENCIA, manualConfirmationPaymentProcessor,
-                PaymentMethod.EFECTIVO, instantApprovalPaymentProcessor);
+                PaymentMethod.TRANSFERENCIA, manualConfirmationPaymentProcessor);
     }
 
     public PaymentProcessor resolve(PaymentMethod method) {
