@@ -6,9 +6,6 @@ import org.springframework.stereotype.Component;
 
 import com.amancay.entity.PaymentMethod;
 
-// Punto unico donde se elige la estrategia segun el metodo de pago. Agregar un
-// metodo nuevo (ej: una pasarela real) es agregar una entrada en este mapa,
-// sin tocar PaymentService.
 @Component
 public class PaymentProcessorResolver {
 

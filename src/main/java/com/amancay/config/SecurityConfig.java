@@ -118,9 +118,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // Requieren usuario autenticado: el perfil y sus recursos (/api/me/**), el panel de
                 // administracion (/api/admin/**, que ademas exige ROLE_ADMIN via @PreAuthorize en
-                // cada controller), ordenes y pagos (/api/orders/**, /api/payments/**: el dueno sale
-                // del JWT via LoggedUser, nunca de un parametro) y la escritura de resenias. El resto
-                // queda publico.
+                // cada controller) y la escritura de resenias. El resto queda publico.
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/me/**", "/api/admin/**", "/api/orders/**", "/api/payments/**")
                         .authenticated()

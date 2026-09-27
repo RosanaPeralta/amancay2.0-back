@@ -22,10 +22,6 @@ import com.amancay.service.PaymentService;
 
 import jakarta.validation.Valid;
 
-/**
- * Pagos del usuario autenticado. Igual que {@code OrderController}, el dueno de la orden
- * se valida contra {@link LoggedUser} (JWT), nunca contra un id que mande el cliente.
- */
 @RestController
 @Validated
 public class PaymentController {
@@ -59,8 +55,6 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.retryPayment(loggedUser.id(), paymentId, request));
     }
 
-    // Confirmar un pago pendiente es una accion de back-office (alguien reviso que la
-    // transferencia llego), no algo que el comprador dueno de la orden pueda hacer.
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/api/payments/{paymentId}/confirm")
     public ResponseEntity<PaymentDto> confirm(@PathVariable UUID paymentId,

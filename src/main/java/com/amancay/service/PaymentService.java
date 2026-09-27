@@ -42,8 +42,6 @@ public class PaymentService {
                 .toList();
     }
 
-    // Un Order solo puede tener un pago aprobado (ver Payment: cada intento
-    // fallido queda registrado, pero una vez aprobado no se puede volver a cobrar).
     @Transactional
     public PaymentDto createPayment(UUID requesterId, UUID orderId, CreatePaymentRequest request) {
         orderService.getOrder(requesterId, orderId, null);
@@ -58,8 +56,6 @@ public class PaymentService {
         return attemptPayment(order, request);
     }
 
-    // Reintentar = un nuevo intento (nuevo Payment) para la misma orden del pago
-    // rechazado, no una actualizacion del pago viejo.
     @Transactional
     public PaymentDto retryPayment(UUID requesterId, UUID paymentId, CreatePaymentRequest request) {
         Payment failedPayment = findPayment(paymentId);
@@ -70,9 +66,6 @@ public class PaymentService {
         return attemptPayment(failedPayment.getOrder(), request);
     }
 
-    // Resuelve un pago que quedo PENDIENTE (hoy, solo transferencia bancaria via
-    // ManualConfirmationPaymentProcessor). No hay verificacion real de nada: es
-    // el mismo caller quien dice si la plata llego o no.
     @Transactional
     public PaymentDto confirmPayment(UUID paymentId, ConfirmPaymentRequest request) {
         if (request.status() != PaymentStatus.APROBADO && request.status() != PaymentStatus.RECHAZADO) {
@@ -104,11 +97,6 @@ public class PaymentService {
         PaymentResult result = processorResolver.resolve(request.method()).process(order, request);
         payment.setStatus(result.status());
 
-        // Payment es dueno de la relacion (tiene la FK a Order): se persiste por su
-        // propio repository para que sea un persist() y no un merge() en cascada
-        // desde Order (que ya esta managed). merge() puede devolver una copia
-        // distinta del objeto que le pasamos, dejando el id/createdAt sin completar
-        // en esta instancia; persist() si actualiza el objeto en el lugar.
         Payment saved = paymentRepository.saveAndFlush(payment);
 
         if (result.status() == PaymentStatus.APROBADO) {

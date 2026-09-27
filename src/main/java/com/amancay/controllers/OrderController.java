@@ -25,11 +25,6 @@ import com.amancay.service.OrderService;
 
 import jakarta.validation.Valid;
 
-/**
- * Ordenes del usuario autenticado. El identificador del comprador nunca viaja en la request:
- * sale de {@link LoggedUser}, resuelto por {@code SupabaseJwtAuthenticationConverter} a partir
- * del JWT. Un ADMIN puede filtrar por {@code userId} para ver ordenes de otro usuario.
- */
 @RestController
 @RequestMapping("/api/orders")
 @Validated
@@ -64,7 +59,6 @@ public class OrderController {
         return ResponseEntity.created(URI.create("/api/orders/" + order.id())).body(order);
     }
 
-    /** Solo ADMIN: el rol lo resuelve {@code UserRoleAuthoritiesFilter} desde {@code users.role}. */
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<OrderDto> changeStatus(
