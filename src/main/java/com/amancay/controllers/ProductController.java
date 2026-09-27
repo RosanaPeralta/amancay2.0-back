@@ -6,7 +6,6 @@ import java.util.UUID;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -24,6 +23,7 @@ import com.amancay.dto.CreateProductRequest;
 import com.amancay.dto.DiscountRequest;
 import com.amancay.dto.PageResponse;
 import com.amancay.dto.ProductDto;
+import com.amancay.dto.ProductSort;
 import com.amancay.dto.ProductSummaryDto;
 import com.amancay.dto.UpdateProductRequest;
 import com.amancay.entity.Product;
@@ -48,10 +48,14 @@ public class ProductController {
     public ResponseEntity<PageResponse<ProductSummaryDto>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String q,
-            @RequestParam(name = "is_active", required = false) Boolean isActive) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), Sort.by("name").ascending());
-        return ResponseEntity.ok(productService.listProducts(pageable, Optional.ofNullable(q).filter(value -> !value.isBlank()), Optional.ofNullable(isActive)));
+            @RequestParam(required = false) String name,
+            @RequestParam(name = "category_id", required = false) UUID categoryId,
+            @RequestParam(name = "is_active", required = false) Boolean isActive,
+            @RequestParam(defaultValue = "name") String sort) {
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), ProductSort.from(sort).sort());
+        return ResponseEntity.ok(productService.listProducts(pageable,
+                Optional.ofNullable(name).map(String::trim).filter(value -> !value.isBlank()),
+                Optional.ofNullable(categoryId), Optional.ofNullable(isActive)));
     }
 
     @GetMapping("/{id}")

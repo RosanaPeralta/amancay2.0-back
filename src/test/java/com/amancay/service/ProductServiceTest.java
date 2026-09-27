@@ -13,8 +13,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
 import com.amancay.dto.CreateProductRequest;
+import com.amancay.dto.PageResponse;
 import com.amancay.dto.ProductDto;
+import com.amancay.dto.ProductSummaryDto;
 import com.amancay.entity.Product;
 import com.amancay.repository.ProductRepository;
 
@@ -68,5 +75,22 @@ class ProductServiceTest {
         ProductDto result = productService.getProductById(java.util.UUID.randomUUID());
 
         assertThat(result.slug()).isEqualTo("coffee");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void listsProductsFilteredBySpecification() {
+        Product product = new Product();
+        product.setName("Coffee");
+        product.setSlug("coffee");
+        Pageable pageable = PageRequest.of(0, 12);
+        when(productRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(product), pageable, 1));
+
+        PageResponse<ProductSummaryDto> result = productService.listProducts(pageable, Optional.of("cof"),
+                Optional.of(java.util.UUID.randomUUID()), Optional.of(true));
+
+        assertThat(result.content()).extracting(ProductSummaryDto::name).containsExactly("Coffee");
+        assertThat(result.totalElements()).isEqualTo(1);
     }
 }
