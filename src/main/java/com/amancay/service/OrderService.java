@@ -72,6 +72,9 @@ public class OrderService {
         return toDto(order);
     }
 
+    // No reserva stock: es solo un aviso temprano de "esto ya no esta disponible" con el
+    // valor que hay en este instante. El stock real se descuenta cuando un pago se aprueba
+    // (PaymentService), para no bloquear unidades por una orden que nunca se paga.
     @Transactional
     public OrderDto createOrder(UUID requesterId, CreateOrderRequest request) {
         Order order = new Order();
@@ -89,7 +92,7 @@ public class OrderService {
             }
 
             ProductVariant variant = findProductVariant(itemRequest.productVariantId());
-            if (productVariantRepository.decrementStock(variant.getId(), itemRequest.quantity()) == 0) {
+            if (variant.getStockQuantity() < itemRequest.quantity()) {
                 throw new InsufficientStockException(variant.getId());
             }
             OrderItem item = new OrderItem();

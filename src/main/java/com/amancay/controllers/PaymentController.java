@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,7 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.amancay.dto.ConfirmPaymentRequest;
+import com.amancay.dto.AttachTransferReferenceRequest;
 import com.amancay.dto.CreatePaymentRequest;
 import com.amancay.dto.PaymentDto;
 import com.amancay.security.LoggedUser;
@@ -55,10 +54,12 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.retryPayment(loggedUser.id(), paymentId, request));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/api/payments/{paymentId}/confirm")
-    public ResponseEntity<PaymentDto> confirm(@PathVariable UUID paymentId,
-            @Valid @RequestBody ConfirmPaymentRequest request) {
-        return ResponseEntity.ok(paymentService.confirmPayment(paymentId, request));
+    @PatchMapping("/api/payments/{paymentId}/transfer-reference")
+    public ResponseEntity<PaymentDto> attachTransferReference(
+            @AuthenticationPrincipal LoggedUser loggedUser,
+            @PathVariable UUID paymentId,
+            @Valid @RequestBody AttachTransferReferenceRequest request) {
+        return ResponseEntity.ok(
+                paymentService.attachTransferReference(loggedUser.id(), paymentId, request.transferReference()));
     }
 }

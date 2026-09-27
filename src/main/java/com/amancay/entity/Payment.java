@@ -51,6 +51,11 @@ public class Payment {
     @Column(nullable = false, length = 20)
     private PaymentStatus status = PaymentStatus.PENDIENTE;
 
+    // Solo se usa con TRANSFERENCIA: el comprador lo carga desde el detalle de la orden
+    // mientras el pago sigue PENDIENTE, y el admin lo usa para confirmar o rechazar.
+    @Column(name = "transfer_reference")
+    private String transferReference;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

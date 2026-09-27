@@ -5,15 +5,13 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.amancay.entity.PaymentMethod;
-import com.amancay.entity.PaymentStatus;
 
-public record PaymentDto(
-        UUID id,
+public record AdminPendingPaymentDto(
+        UUID paymentId,
         UUID orderId,
         BigDecimal amount,
         PaymentMethod method,
-        PaymentStatus status,
-        String reason,
         String transferReference,
-        Instant createdAt) {
+        Instant createdAt,
+        String buyerEmail) {
 }
