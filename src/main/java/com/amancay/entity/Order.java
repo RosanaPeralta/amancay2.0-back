@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -52,7 +53,10 @@ public class Order {
     @Embedded
     private ShippingAddress shippingAddress;
 
+    // orders.status es un enum nativo de Postgres (order_status), no varchar: sin el cast
+    // explicito, Postgres rechaza el parametro que Hibernate manda como character varying.
     @Enumerated(EnumType.STRING)
+    @ColumnTransformer(write = "?::order_status")
     @Column(nullable = false, length = 20)
     private OrderStatus status = OrderStatus.CREADO;
 

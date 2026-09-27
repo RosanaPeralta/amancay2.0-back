@@ -3,6 +3,7 @@ package com.amancay.entity;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.CreationTimestamp;
 
 import lombok.Getter;
@@ -35,7 +36,9 @@ public class OrderStatusHistory {
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
+    // Mismo enum nativo que Order.status; ver el comentario ahi.
     @Enumerated(EnumType.STRING)
+    @ColumnTransformer(write = "?::order_status")
     @Column(nullable = false, length = 20)
     private OrderStatus status;
 
