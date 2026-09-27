@@ -7,11 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import com.amancay.exceptions.InvalidOrderStatusTransitionException;
 
-/**
- * Protege el patron State de {@link Order#changeStatus}: las transiciones
- * validas estan definidas en {@link OrderStatus}, no aqui; esta clase solo
- * verifica que Order las respete y deje registro en el historial.
- */
 class OrderTest {
 
     @Test

@@ -11,7 +11,6 @@ import com.amancay.entity.ProductVariant;
 
 public interface ProductVariantRepository extends JpaRepository<ProductVariant, UUID> {
 
-    /** Descuenta stock de forma atomica; devuelve 0 si no alcanza (no hay lectura previa que pueda pisarse). */
     @Modifying
     @Query("update ProductVariant v set v.stockQuantity = v.stockQuantity - :quantity "
             + "where v.id = :id and v.stockQuantity >= :quantity")
