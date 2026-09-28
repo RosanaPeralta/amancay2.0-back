@@ -2,7 +2,11 @@ package com.amancay.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -17,12 +21,18 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
+import com.amancay.dto.CreateOrderRequest;
 import com.amancay.dto.OrderDto;
+import com.amancay.entity.Address;
 import com.amancay.entity.Order;
 import com.amancay.entity.OrderStatus;
+import com.amancay.entity.ProductVariant;
 import com.amancay.entity.Role;
 import com.amancay.entity.User;
+import com.amancay.exceptions.InsufficientStockException;
+import com.amancay.repository.AddressRepository;
 import com.amancay.repository.OrderRepository;
+import com.amancay.repository.ProductVariantRepository;
 import com.amancay.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,11 +44,50 @@ class OrderServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ProductVariantRepository productVariantRepository;
+
+    @Mock
+    private AddressRepository addressRepository;
+
     private OrderService orderService;
 
     @BeforeEach
     void setUp() {
-        orderService = new OrderService(orderRepository, userRepository, null);
+        orderService = new OrderService(orderRepository, userRepository, productVariantRepository, addressRepository,
+                null);
+    }
+
+    @Test
+    void createOrderDoesNotTouchStock() {
+        UUID buyerId = UUID.randomUUID();
+        UUID addressId = UUID.randomUUID();
+        ProductVariant variant = variant(new BigDecimal("50.00"));
+        variant.setStockQuantity(10);
+        stubAddress(addressId, buyerId);
+        when(productVariantRepository.findById(variant.getId())).thenReturn(Optional.of(variant));
+        when(orderRepository.saveAndFlush(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        OrderDto result = orderService.createOrder(buyerId, request(addressId, variant.getId(), 2));
+
+        assertThat(result.userId()).isEqualTo(buyerId);
+        assertThat(result.total()).isEqualByComparingTo("100.00");
+        verify(productVariantRepository, never()).decrementStock(any(), anyInt());
+    }
+
+    @Test
+    void createOrderFailsWithoutSavingWhenStockIsInsufficient() {
+        UUID buyerId = UUID.randomUUID();
+        UUID addressId = UUID.randomUUID();
+        ProductVariant variant = variant(new BigDecimal("50.00"));
+        variant.setStockQuantity(3);
+        stubAddress(addressId, buyerId);
+        when(productVariantRepository.findById(variant.getId())).thenReturn(Optional.of(variant));
+
+        assertThatThrownBy(() -> orderService.createOrder(buyerId, request(addressId, variant.getId(), 5)))
+                .isInstanceOf(InsufficientStockException.class);
+        verify(orderRepository, never()).saveAndFlush(any());
+        verify(productVariantRepository, never()).decrementStock(any(), anyInt());
     }
 
     @Test
@@ -79,6 +128,22 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> orderService.listOrders(buyerId, otherUserId))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    private void stubAddress(UUID addressId, UUID userId) {
+        Address address = Address.create(userId, "Calle", 1, null, "Ciudad", null, "Pais", null);
+        when(addressRepository.findById(addressId)).thenReturn(Optional.of(address));
+    }
+
+    private ProductVariant variant(BigDecimal price) {
+        ProductVariant variant = new ProductVariant();
+        variant.setId(UUID.randomUUID());
+        variant.setPrice(price);
+        return variant;
+    }
+
+    private CreateOrderRequest request(UUID addressId, UUID variantId, int quantity) {
+        return new CreateOrderRequest(addressId, List.of(new CreateOrderRequest.ItemRequest(variantId, quantity)));
     }
 
     private User user(UUID id, Role role) {

@@ -120,7 +120,8 @@ public class SecurityConfig {
                 // administracion (/api/admin/**, que ademas exige ROLE_ADMIN via @PreAuthorize en
                 // cada controller) y la escritura de resenias. El resto queda publico.
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/me/**", "/api/admin/**").authenticated()
+                        .requestMatchers("/api/me/**", "/api/admin/**", "/api/orders/**", "/api/payments/**")
+                        .authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/products/*/reviews").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/reviews/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/reviews/**").authenticated()

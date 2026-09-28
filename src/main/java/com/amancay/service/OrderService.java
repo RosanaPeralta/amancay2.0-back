@@ -22,6 +22,7 @@ import com.amancay.entity.Role;
 import com.amancay.entity.ProductVariant;
 import com.amancay.entity.User;
 import com.amancay.event.OrderStatusChangedEvent;
+import com.amancay.exceptions.InsufficientStockException;
 import com.amancay.exceptions.OrderNotFoundException;
 import com.amancay.exceptions.UserNotFoundException;
 import com.amancay.repository.OrderRepository;
@@ -62,18 +63,6 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderDto> listOrders(UUID userId) {
-        if (userId == null) {
-            return orderRepository.findAll().stream()
-                    .map(this::toDto)
-                    .toList();
-        }
-        return orderRepository.findByUserId(userId).stream()
-                .map(this::toDto)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
     public OrderDto getOrder(UUID requesterId, UUID orderId, UUID requestedUserId) {
         UUID targetUserId = resolveTargetUserId(requesterId, requestedUserId);
         Order order = findOrder(orderId);
@@ -83,19 +72,13 @@ public class OrderService {
         return toDto(order);
     }
 
-    @Transactional(readOnly = true)
-    public OrderDto getOrder(UUID orderId, UUID userId) {
-        Order order = findOrder(orderId);
-        if (userId != null && !order.getUserId().equals(userId)) {
-            throw new AccessDeniedException("The order does not belong to the requested user");
-        }
-        return toDto(order);
-    }
-
+    // No reserva stock: es solo un aviso temprano de "esto ya no esta disponible" con el
+    // valor que hay en este instante. El stock real se descuenta cuando un pago se aprueba
+    // (PaymentService), para no bloquear unidades por una orden que nunca se paga.
     @Transactional
-    public OrderDto createOrder(CreateOrderRequest request) {
+    public OrderDto createOrder(UUID requesterId, CreateOrderRequest request) {
         Order order = new Order();
-        order.setUserId(request.userId());
+        order.setUserId(requesterId);
         order.setShippingAddressId(request.shippingAddressId());
         order.setShippingAddress(toShippingAddress(findAddress(request.shippingAddressId())));
         order.setSubtotal(BigDecimal.ZERO);
@@ -109,6 +92,9 @@ public class OrderService {
             }
 
             ProductVariant variant = findProductVariant(itemRequest.productVariantId());
+            if (variant.getStockQuantity() < itemRequest.quantity()) {
+                throw new InsufficientStockException(variant.getId());
+            }
             OrderItem item = new OrderItem();
             item.setProductVariant(variant);
             item.setQuantity(itemRequest.quantity());

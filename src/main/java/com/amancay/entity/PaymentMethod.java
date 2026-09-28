@@ -4,7 +4,5 @@ package com.amancay.entity;
 public enum PaymentMethod {
     TARJETA_CREDITO,
     TARJETA_DEBITO,
-    MERCADO_PAGO,
-    TRANSFERENCIA,
-    EFECTIVO
+    TRANSFERENCIA
 }
