@@ -21,7 +21,6 @@ import com.amancay.exceptions.DuplicateFavoriteException;
 import com.amancay.exceptions.DuplicateReviewException;
 import com.amancay.exceptions.FavoriteNotFoundException;
 import com.amancay.exceptions.InsufficientStockException;
-import com.amancay.exceptions.PaymentNotFoundException;
 import com.amancay.exceptions.ProductNotFoundException;
 import com.amancay.exceptions.PurchaseRequiredException;
 import com.amancay.exceptions.ReviewNotFoundException;
@@ -30,6 +29,7 @@ import com.amancay.exceptions.UserNotFoundException;
 import com.amancay.order.domain.exception.InvalidOrderStatusTransitionException;
 import com.amancay.order.domain.exception.OrderAccessDeniedException;
 import com.amancay.order.domain.exception.OrderNotFoundException;
+import com.amancay.payment.domain.exception.PaymentNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {

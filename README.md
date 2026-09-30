@@ -78,7 +78,7 @@ http://localhost:8080/swagger-ui/index.html
 ```
 
 ## Cómo correr el proyecto
-
+No, 
 ```bash
 ./mvnw spring-boot:run
 ```
