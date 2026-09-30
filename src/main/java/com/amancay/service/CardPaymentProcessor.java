@@ -3,7 +3,7 @@ package com.amancay.service;
 import org.springframework.stereotype.Component;
 
 import com.amancay.dto.CreatePaymentRequest;
-import com.amancay.entity.Order;
+import com.amancay.order.domain.model.Order;
 
 @Component
 public class CardPaymentProcessor implements PaymentProcessor {

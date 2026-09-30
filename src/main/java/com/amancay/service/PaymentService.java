@@ -13,17 +13,17 @@ import com.amancay.dto.AdminPendingPaymentDto;
 import com.amancay.dto.ConfirmPaymentRequest;
 import com.amancay.dto.CreatePaymentRequest;
 import com.amancay.dto.PaymentDto;
-import com.amancay.entity.Order;
-import com.amancay.entity.OrderItem;
-import com.amancay.entity.OrderStatus;
 import com.amancay.entity.Payment;
 import com.amancay.entity.PaymentMethod;
 import com.amancay.entity.PaymentStatus;
 import com.amancay.entity.User;
 import com.amancay.exceptions.InsufficientStockException;
-import com.amancay.exceptions.OrderNotFoundException;
 import com.amancay.exceptions.PaymentNotFoundException;
-import com.amancay.repository.OrderRepository;
+import com.amancay.order.application.port.in.ChangeOrderStatusUseCase;
+import com.amancay.order.application.port.in.GetOrderQuery;
+import com.amancay.order.domain.model.Order;
+import com.amancay.order.domain.model.OrderItem;
+import com.amancay.order.domain.model.OrderStatus;
 import com.amancay.repository.PaymentRepository;
 import com.amancay.repository.ProductVariantRepository;
 import com.amancay.repository.UserRepository;
@@ -32,18 +32,18 @@ import com.amancay.repository.UserRepository;
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
-    private final OrderRepository orderRepository;
-    private final OrderService orderService;
+    private final GetOrderQuery getOrderQuery;
+    private final ChangeOrderStatusUseCase changeOrderStatusUseCase;
     private final PaymentProcessorResolver processorResolver;
     private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
 
-    public PaymentService(PaymentRepository paymentRepository, OrderRepository orderRepository,
-            OrderService orderService, PaymentProcessorResolver processorResolver,
+    public PaymentService(PaymentRepository paymentRepository, GetOrderQuery getOrderQuery,
+            ChangeOrderStatusUseCase changeOrderStatusUseCase, PaymentProcessorResolver processorResolver,
             ProductVariantRepository productVariantRepository, UserRepository userRepository) {
         this.paymentRepository = paymentRepository;
-        this.orderRepository = orderRepository;
-        this.orderService = orderService;
+        this.getOrderQuery = getOrderQuery;
+        this.changeOrderStatusUseCase = changeOrderStatusUseCase;
         this.processorResolver = processorResolver;
         this.productVariantRepository = productVariantRepository;
         this.userRepository = userRepository;
@@ -51,7 +51,7 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public List<PaymentDto> listByOrder(UUID requesterId, UUID orderId) {
-        orderService.getOrder(requesterId, orderId, null);
+        getOrderQuery.get(requesterId, orderId, null);
         return paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId).stream()
                 .map(payment -> toDto(payment, null))
                 .toList();
@@ -59,12 +59,9 @@ public class PaymentService {
 
     @Transactional
     public PaymentDto createPayment(UUID requesterId, UUID orderId, CreatePaymentRequest request) {
-        orderService.getOrder(requesterId, orderId, null);
-        Order order = findOrder(orderId);
+        Order order = getOrderQuery.get(requesterId, orderId, null);
 
-        boolean alreadyApproved = order.getPayments().stream()
-                .anyMatch(payment -> payment.getStatus() == PaymentStatus.APROBADO);
-        if (alreadyApproved) {
+        if (paymentRepository.existsByOrderIdAndStatus(orderId, PaymentStatus.APROBADO)) {
             throw new IllegalStateException("Order already has an approved payment");
         }
 
@@ -74,11 +71,11 @@ public class PaymentService {
     @Transactional
     public PaymentDto retryPayment(UUID requesterId, UUID paymentId, CreatePaymentRequest request) {
         Payment failedPayment = findPayment(paymentId);
-        orderService.getOrder(requesterId, failedPayment.getOrder().getId(), null);
+        Order order = getOrderQuery.get(requesterId, failedPayment.getOrderId(), null);
         if (failedPayment.getStatus() != PaymentStatus.RECHAZADO) {
             throw new IllegalStateException("Only a rejected payment can be retried");
         }
-        return attemptPayment(failedPayment.getOrder(), request);
+        return attemptPayment(order, request);
     }
 
     // El dueno de la tienda viendo que transferencias tiene que chequear contra su
@@ -88,13 +85,15 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public List<AdminPendingPaymentDto> listPendingForAdmin() {
         List<Payment> pending = paymentRepository.findByStatusOrderByCreatedAtAsc(PaymentStatus.PENDIENTE);
-        Set<UUID> buyerIds = pending.stream().map(payment -> payment.getOrder().getUserId()).collect(Collectors.toSet());
-        Map<UUID, String> emailsByUserId = userRepository.findAllById(buyerIds).stream()
+        Set<UUID> orderIds = pending.stream().map(Payment::getOrderId).collect(Collectors.toSet());
+        Map<UUID, UUID> buyerIdsByOrderId = getOrderQuery.getAllById(orderIds).stream()
+                .collect(Collectors.toMap(Order::getId, Order::getUserId));
+        Map<UUID, String> emailsByUserId = userRepository.findAllById(Set.copyOf(buyerIdsByOrderId.values())).stream()
                 .collect(Collectors.toMap(User::getId, User::getEmail));
         return pending.stream()
-                .map(payment -> new AdminPendingPaymentDto(payment.getId(), payment.getOrder().getId(),
+                .map(payment -> new AdminPendingPaymentDto(payment.getId(), payment.getOrderId(),
                         payment.getAmount(), payment.getMethod(), payment.getTransferReference(),
-                        payment.getCreatedAt(), emailsByUserId.get(payment.getOrder().getUserId())))
+                        payment.getCreatedAt(), emailsByUserId.get(buyerIdsByOrderId.get(payment.getOrderId()))))
                 .toList();
     }
 
@@ -113,8 +112,8 @@ public class PaymentService {
         Payment saved = paymentRepository.saveAndFlush(payment);
 
         if (request.status() == PaymentStatus.APROBADO) {
-            decrementStockFor(payment.getOrder());
-            orderService.changeStatus(payment.getOrder().getId(), OrderStatus.EN_PREPARACION);
+            decrementStockFor(getOrderQuery.getById(payment.getOrderId()));
+            changeOrderStatusUseCase.changeStatus(payment.getOrderId(), OrderStatus.EN_PREPARACION);
         }
 
         return toDto(saved, null);
@@ -127,7 +126,7 @@ public class PaymentService {
     @Transactional
     public PaymentDto attachTransferReference(UUID requesterId, UUID paymentId, String transferReference) {
         Payment payment = findPayment(paymentId);
-        orderService.getOrder(requesterId, payment.getOrder().getId(), null);
+        getOrderQuery.get(requesterId, payment.getOrderId(), null);
         if (payment.getMethod() != PaymentMethod.TRANSFERENCIA) {
             throw new IllegalArgumentException("Only bank transfer payments accept a reference code");
         }
@@ -141,7 +140,7 @@ public class PaymentService {
 
     private PaymentDto attemptPayment(Order order, CreatePaymentRequest request) {
         Payment payment = new Payment();
-        payment.setOrder(order);
+        payment.setOrderId(order.getId());
         payment.setAmount(order.getTotal());
         payment.setMethod(request.method());
         payment.setStatus(PaymentStatus.PENDIENTE);
@@ -153,7 +152,7 @@ public class PaymentService {
 
         if (result.status() == PaymentStatus.APROBADO) {
             decrementStockFor(order);
-            orderService.changeStatus(order.getId(), OrderStatus.EN_PREPARACION);
+            changeOrderStatusUseCase.changeStatus(order.getId(), OrderStatus.EN_PREPARACION);
         }
 
         return toDto(saved, result.reason());
@@ -166,15 +165,11 @@ public class PaymentService {
     // el pago no queda guardado como aprobado sin el stock que respalda esa aprobacion.
     private void decrementStockFor(Order order) {
         for (OrderItem item : order.getItems()) {
-            UUID variantId = item.getProductVariant().getId();
-            if (productVariantRepository.decrementStock(variantId, item.getQuantity()) == 0) {
+            UUID variantId = item.productVariantId();
+            if (productVariantRepository.decrementStock(variantId, item.quantity()) == 0) {
                 throw new InsufficientStockException(variantId);
             }
         }
-    }
-
-    private Order findOrder(UUID id) {
-        return orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
     }
 
     private Payment findPayment(UUID id) {
@@ -182,7 +177,7 @@ public class PaymentService {
     }
 
     private PaymentDto toDto(Payment payment, String reason) {
-        return new PaymentDto(payment.getId(), payment.getOrder().getId(), payment.getAmount(), payment.getMethod(),
+        return new PaymentDto(payment.getId(), payment.getOrderId(), payment.getAmount(), payment.getMethod(),
                 payment.getStatus(), reason, payment.getTransferReference(), payment.getCreatedAt());
     }
 }

@@ -21,14 +21,15 @@ import com.amancay.exceptions.DuplicateFavoriteException;
 import com.amancay.exceptions.DuplicateReviewException;
 import com.amancay.exceptions.FavoriteNotFoundException;
 import com.amancay.exceptions.InsufficientStockException;
-import com.amancay.exceptions.InvalidOrderStatusTransitionException;
-import com.amancay.exceptions.OrderNotFoundException;
 import com.amancay.exceptions.PaymentNotFoundException;
 import com.amancay.exceptions.ProductNotFoundException;
 import com.amancay.exceptions.PurchaseRequiredException;
 import com.amancay.exceptions.ReviewNotFoundException;
 import com.amancay.exceptions.SelfRoleChangeException;
 import com.amancay.exceptions.UserNotFoundException;
+import com.amancay.order.domain.exception.InvalidOrderStatusTransitionException;
+import com.amancay.order.domain.exception.OrderAccessDeniedException;
+import com.amancay.order.domain.exception.OrderNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -90,6 +91,12 @@ public class ApiExceptionHandler {
     /** {@code @PreAuthorize} rechazado (BUYER contra un endpoint ADMIN): mismo formato que el resto. */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied"));
+    }
+
+    // Misma respuesta que AccessDeniedException: el front no distingue de donde vino el rechazo.
+    @ExceptionHandler(OrderAccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleOrderAccessDenied(OrderAccessDeniedException exception) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied"));
     }
 

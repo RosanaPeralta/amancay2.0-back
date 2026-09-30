@@ -11,6 +11,8 @@ import com.amancay.entity.PaymentStatus;
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     List<Payment> findByOrderIdOrderByCreatedAtDesc(UUID orderId);
 
+    boolean existsByOrderIdAndStatus(UUID orderId, PaymentStatus status);
+
     // El panel de admin para revisar transferencias: pagos pendientes de TODOS los
     // usuarios, mas viejos primero (los que esperan hace mas tiempo, primero en la cola).
     List<Payment> findByStatusOrderByCreatedAtAsc(PaymentStatus status);

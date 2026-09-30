@@ -18,24 +18,25 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.access.AccessDeniedException;
 
 import com.amancay.dto.AdminPendingPaymentDto;
 import com.amancay.dto.ConfirmPaymentRequest;
 import com.amancay.dto.CreatePaymentRequest;
 import com.amancay.dto.PaymentDto;
-import com.amancay.entity.Order;
-import com.amancay.entity.OrderStatus;
 import com.amancay.entity.Payment;
 import com.amancay.entity.PaymentMethod;
 import com.amancay.entity.PaymentStatus;
 import com.amancay.entity.User;
 import com.amancay.exceptions.InsufficientStockException;
-import com.amancay.exceptions.OrderNotFoundException;
 import com.amancay.exceptions.PaymentNotFoundException;
-import com.amancay.entity.OrderItem;
-import com.amancay.entity.ProductVariant;
-import com.amancay.repository.OrderRepository;
+import com.amancay.order.application.port.in.ChangeOrderStatusUseCase;
+import com.amancay.order.application.port.in.GetOrderQuery;
+import com.amancay.order.domain.exception.OrderAccessDeniedException;
+import com.amancay.order.domain.exception.OrderNotFoundException;
+import com.amancay.order.domain.model.Order;
+import com.amancay.order.domain.model.OrderFixtures;
+import com.amancay.order.domain.model.OrderItem;
+import com.amancay.order.domain.model.OrderStatus;
 import com.amancay.repository.PaymentRepository;
 import com.amancay.repository.ProductVariantRepository;
 import com.amancay.repository.UserRepository;
@@ -51,10 +52,10 @@ class PaymentServiceTest {
     private PaymentRepository paymentRepository;
 
     @Mock
-    private OrderRepository orderRepository;
+    private GetOrderQuery getOrderQuery;
 
     @Mock
-    private OrderService orderService;
+    private ChangeOrderStatusUseCase changeOrderStatusUseCase;
 
     @Mock
     private PaymentProcessorResolver processorResolver;
@@ -72,7 +73,7 @@ class PaymentServiceTest {
 
     @BeforeEach
     void setUp() {
-        paymentService = new PaymentService(paymentRepository, orderRepository, orderService, processorResolver,
+        paymentService = new PaymentService(paymentRepository, getOrderQuery, changeOrderStatusUseCase, processorResolver,
                 productVariantRepository, userRepository);
     }
 
@@ -80,7 +81,7 @@ class PaymentServiceTest {
     void approvedPaymentMovesTheOrderToEnPreparacion() {
         Order order = order(ORDER_ID, BigDecimal.valueOf(200));
         CreatePaymentRequest request = cardRequest();
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(getOrderQuery.get(REQUESTER_ID, ORDER_ID, null)).thenReturn(order);
         when(processorResolver.resolve(PaymentMethod.TARJETA_CREDITO)).thenReturn(processor);
         when(processor.process(order, request)).thenReturn(PaymentResult.approved());
         when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -89,15 +90,15 @@ class PaymentServiceTest {
 
         assertThat(result.status()).isEqualTo(PaymentStatus.APROBADO);
         assertThat(result.amount()).isEqualByComparingTo("200");
-        verify(orderService).getOrder(REQUESTER_ID, ORDER_ID, null);
-        verify(orderService).changeStatus(ORDER_ID, OrderStatus.EN_PREPARACION);
+        verify(getOrderQuery).get(REQUESTER_ID, ORDER_ID, null);
+        verify(changeOrderStatusUseCase).changeStatus(ORDER_ID, OrderStatus.EN_PREPARACION);
     }
 
     @Test
     void rejectedPaymentDoesNotTouchTheOrderStatus() {
         Order order = order(ORDER_ID, BigDecimal.valueOf(200));
         CreatePaymentRequest request = cardRequest();
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(getOrderQuery.get(REQUESTER_ID, ORDER_ID, null)).thenReturn(order);
         when(processorResolver.resolve(PaymentMethod.TARJETA_CREDITO)).thenReturn(processor);
         when(processor.process(order, request)).thenReturn(PaymentResult.rejected("Card declined (simulated)"));
         when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -106,16 +107,14 @@ class PaymentServiceTest {
 
         assertThat(result.status()).isEqualTo(PaymentStatus.RECHAZADO);
         assertThat(result.reason()).isEqualTo("Card declined (simulated)");
-        verify(orderService, never()).changeStatus(any(), any());
+        verify(changeOrderStatusUseCase, never()).changeStatus(any(), any());
     }
 
     @Test
     void cannotPayAnOrderThatAlreadyHasAnApprovedPayment() {
         Order order = order(ORDER_ID, BigDecimal.valueOf(200));
-        Payment approved = new Payment();
-        approved.setStatus(PaymentStatus.APROBADO);
-        order.addPayment(approved);
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(getOrderQuery.get(REQUESTER_ID, ORDER_ID, null)).thenReturn(order);
+        when(paymentRepository.existsByOrderIdAndStatus(ORDER_ID, PaymentStatus.APROBADO)).thenReturn(true);
 
         assertThatThrownBy(() -> paymentService.createPayment(REQUESTER_ID, ORDER_ID, cardRequest()))
                 .isInstanceOf(IllegalStateException.class);
@@ -124,7 +123,7 @@ class PaymentServiceTest {
 
     @Test
     void unknownOrderIsReportedAsNotFound() {
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.empty());
+        when(getOrderQuery.get(REQUESTER_ID, ORDER_ID, null)).thenThrow(new OrderNotFoundException(ORDER_ID));
 
         assertThatThrownBy(() -> paymentService.createPayment(REQUESTER_ID, ORDER_ID, cardRequest()))
                 .isInstanceOf(OrderNotFoundException.class);
@@ -132,11 +131,11 @@ class PaymentServiceTest {
 
     @Test
     void cannotPayAnotherUsersOrder() {
-        when(orderService.getOrder(REQUESTER_ID, ORDER_ID, null))
-                .thenThrow(new AccessDeniedException("No tienes permisos para ver esta orden"));
+        when(getOrderQuery.get(REQUESTER_ID, ORDER_ID, null))
+                .thenThrow(new OrderAccessDeniedException("No tienes permisos para ver esta orden"));
 
         assertThatThrownBy(() -> paymentService.createPayment(REQUESTER_ID, ORDER_ID, cardRequest()))
-                .isInstanceOf(AccessDeniedException.class);
+                .isInstanceOf(OrderAccessDeniedException.class);
         verify(paymentRepository, never()).saveAndFlush(any());
     }
 
@@ -146,6 +145,7 @@ class PaymentServiceTest {
         Payment rejected = payment(PAYMENT_ID, order, PaymentStatus.RECHAZADO);
         CreatePaymentRequest request = cardRequest();
         when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(rejected));
+        when(getOrderQuery.get(REQUESTER_ID, ORDER_ID, null)).thenReturn(order);
         when(processorResolver.resolve(PaymentMethod.TARJETA_CREDITO)).thenReturn(processor);
         when(processor.process(order, request)).thenReturn(PaymentResult.approved());
         when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -153,8 +153,8 @@ class PaymentServiceTest {
         PaymentDto result = paymentService.retryPayment(REQUESTER_ID, PAYMENT_ID, request);
 
         assertThat(result.status()).isEqualTo(PaymentStatus.APROBADO);
-        verify(orderService).getOrder(REQUESTER_ID, ORDER_ID, null);
-        verify(orderService).changeStatus(ORDER_ID, OrderStatus.EN_PREPARACION);
+        verify(getOrderQuery).get(REQUESTER_ID, ORDER_ID, null);
+        verify(changeOrderStatusUseCase).changeStatus(ORDER_ID, OrderStatus.EN_PREPARACION);
     }
 
     @Test
@@ -180,11 +180,11 @@ class PaymentServiceTest {
         Order order = order(ORDER_ID, BigDecimal.valueOf(200));
         Payment rejected = payment(PAYMENT_ID, order, PaymentStatus.RECHAZADO);
         when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(rejected));
-        when(orderService.getOrder(REQUESTER_ID, ORDER_ID, null))
-                .thenThrow(new AccessDeniedException("No tienes permisos para ver esta orden"));
+        when(getOrderQuery.get(REQUESTER_ID, ORDER_ID, null))
+                .thenThrow(new OrderAccessDeniedException("No tienes permisos para ver esta orden"));
 
         assertThatThrownBy(() -> paymentService.retryPayment(REQUESTER_ID, PAYMENT_ID, cardRequest()))
-                .isInstanceOf(AccessDeniedException.class);
+                .isInstanceOf(OrderAccessDeniedException.class);
         verify(paymentRepository, never()).saveAndFlush(any());
     }
 
@@ -196,16 +196,16 @@ class PaymentServiceTest {
         List<PaymentDto> result = paymentService.listByOrder(REQUESTER_ID, ORDER_ID);
 
         assertThat(result).hasSize(1);
-        verify(orderService).getOrder(REQUESTER_ID, ORDER_ID, null);
+        verify(getOrderQuery).get(REQUESTER_ID, ORDER_ID, null);
     }
 
     @Test
     void cannotListPaymentsOfAnotherUsersOrder() {
-        when(orderService.getOrder(REQUESTER_ID, ORDER_ID, null))
-                .thenThrow(new AccessDeniedException("No tienes permisos para ver esta orden"));
+        when(getOrderQuery.get(REQUESTER_ID, ORDER_ID, null))
+                .thenThrow(new OrderAccessDeniedException("No tienes permisos para ver esta orden"));
 
         assertThatThrownBy(() -> paymentService.listByOrder(REQUESTER_ID, ORDER_ID))
-                .isInstanceOf(AccessDeniedException.class);
+                .isInstanceOf(OrderAccessDeniedException.class);
     }
 
     @Test
@@ -214,12 +214,13 @@ class PaymentServiceTest {
         Payment pending = payment(PAYMENT_ID, order, PaymentStatus.PENDIENTE);
         when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
         when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(getOrderQuery.getById(ORDER_ID)).thenReturn(order);
 
         PaymentDto result = paymentService.confirmPayment(PAYMENT_ID,
                 new ConfirmPaymentRequest(PaymentStatus.APROBADO));
 
         assertThat(result.status()).isEqualTo(PaymentStatus.APROBADO);
-        verify(orderService).changeStatus(ORDER_ID, OrderStatus.EN_PREPARACION);
+        verify(changeOrderStatusUseCase).changeStatus(ORDER_ID, OrderStatus.EN_PREPARACION);
     }
 
     @Test
@@ -233,7 +234,7 @@ class PaymentServiceTest {
                 new ConfirmPaymentRequest(PaymentStatus.RECHAZADO));
 
         assertThat(result.status()).isEqualTo(PaymentStatus.RECHAZADO);
-        verify(orderService, never()).changeStatus(any(), any());
+        verify(changeOrderStatusUseCase, never()).changeStatus(any(), any());
     }
 
     @Test
@@ -260,7 +261,7 @@ class PaymentServiceTest {
         UUID variantId = UUID.randomUUID();
         Order order = orderWithItem(ORDER_ID, BigDecimal.valueOf(200), variantId, 3);
         CreatePaymentRequest request = cardRequest();
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(getOrderQuery.get(REQUESTER_ID, ORDER_ID, null)).thenReturn(order);
         when(processorResolver.resolve(PaymentMethod.TARJETA_CREDITO)).thenReturn(processor);
         when(processor.process(order, request)).thenReturn(PaymentResult.approved());
         when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -276,7 +277,7 @@ class PaymentServiceTest {
         UUID variantId = UUID.randomUUID();
         Order order = orderWithItem(ORDER_ID, BigDecimal.valueOf(200), variantId, 3);
         CreatePaymentRequest request = cardRequest();
-        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(getOrderQuery.get(REQUESTER_ID, ORDER_ID, null)).thenReturn(order);
         when(processorResolver.resolve(PaymentMethod.TARJETA_CREDITO)).thenReturn(processor);
         when(processor.process(order, request)).thenReturn(PaymentResult.approved());
         when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -284,7 +285,7 @@ class PaymentServiceTest {
 
         assertThatThrownBy(() -> paymentService.createPayment(REQUESTER_ID, ORDER_ID, request))
                 .isInstanceOf(InsufficientStockException.class);
-        verify(orderService, never()).changeStatus(any(), any());
+        verify(changeOrderStatusUseCase, never()).changeStatus(any(), any());
     }
 
     @Test
@@ -298,7 +299,7 @@ class PaymentServiceTest {
         PaymentDto result = paymentService.attachTransferReference(REQUESTER_ID, PAYMENT_ID, "TRX-123");
 
         assertThat(result.transferReference()).isEqualTo("TRX-123");
-        verify(orderService).getOrder(REQUESTER_ID, ORDER_ID, null);
+        verify(getOrderQuery).get(REQUESTER_ID, ORDER_ID, null);
     }
 
     @Test
@@ -328,23 +329,23 @@ class PaymentServiceTest {
         Payment pending = payment(PAYMENT_ID, order, PaymentStatus.PENDIENTE);
         pending.setMethod(PaymentMethod.TRANSFERENCIA);
         when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
-        when(orderService.getOrder(REQUESTER_ID, ORDER_ID, null))
-                .thenThrow(new AccessDeniedException("No tienes permisos para ver esta orden"));
+        when(getOrderQuery.get(REQUESTER_ID, ORDER_ID, null))
+                .thenThrow(new OrderAccessDeniedException("No tienes permisos para ver esta orden"));
 
         assertThatThrownBy(() -> paymentService.attachTransferReference(REQUESTER_ID, PAYMENT_ID, "TRX-123"))
-                .isInstanceOf(AccessDeniedException.class);
+                .isInstanceOf(OrderAccessDeniedException.class);
         verify(paymentRepository, never()).saveAndFlush(any());
     }
 
     @Test
     void listPendingForAdminReturnsAllPendingPaymentsWithBuyerEmail() {
         UUID buyerId = UUID.randomUUID();
-        Order order = order(ORDER_ID, BigDecimal.valueOf(200));
-        order.setUserId(buyerId);
+        Order order = OrderFixtures.persisted(ORDER_ID, buyerId, OrderStatus.CREADO, BigDecimal.valueOf(200), List.of());
         Payment pending = payment(PAYMENT_ID, order, PaymentStatus.PENDIENTE);
         pending.setMethod(PaymentMethod.TRANSFERENCIA);
         pending.setTransferReference("TRX-999");
         when(paymentRepository.findByStatusOrderByCreatedAtAsc(PaymentStatus.PENDIENTE)).thenReturn(List.of(pending));
+        when(getOrderQuery.getAllById(Set.of(ORDER_ID))).thenReturn(List.of(order));
         User buyer = new User();
         buyer.setId(buyerId);
         buyer.setEmail("buyer@amancay.com");
@@ -368,28 +369,18 @@ class PaymentServiceTest {
     }
 
     private Order order(UUID id, BigDecimal total) {
-        Order order = new Order();
-        order.setId(id);
-        order.setTotal(total);
-        return order;
+        return OrderFixtures.persisted(id, REQUESTER_ID, OrderStatus.CREADO, total, List.of());
     }
 
     private Order orderWithItem(UUID id, BigDecimal total, UUID variantId, int quantity) {
-        Order order = order(id, total);
-        ProductVariant variant = new ProductVariant();
-        variant.setId(variantId);
-        OrderItem item = new OrderItem();
-        item.setProductVariant(variant);
-        item.setQuantity(quantity);
-        item.setUnitPrice(total);
-        order.addItem(item);
-        return order;
+        return OrderFixtures.persisted(id, REQUESTER_ID, OrderStatus.CREADO, total,
+                List.of(OrderItem.create(variantId, quantity, total)));
     }
 
     private Payment payment(UUID id, Order order, PaymentStatus status) {
         Payment payment = new Payment();
         payment.setId(id);
-        payment.setOrder(order);
+        payment.setOrderId(order.getId());
         payment.setAmount(order.getTotal());
         payment.setMethod(PaymentMethod.TARJETA_CREDITO);
         payment.setStatus(status);
