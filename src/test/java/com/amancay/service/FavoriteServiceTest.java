@@ -89,7 +89,7 @@ class FavoriteServiceTest {
 
         favoriteService.remove(USER_ID, PRODUCT_ID);
 
-        verify(favoriteRepository).delete(favorite);
+        verify(favoriteRepository).deleteById(favorite.getId());
     }
 
     @Test

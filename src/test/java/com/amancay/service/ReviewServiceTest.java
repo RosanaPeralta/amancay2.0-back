@@ -160,7 +160,7 @@ class ReviewServiceTest {
 
         reviewService.delete(USER_ID, REVIEW_ID);
 
-        verify(reviewRepository).delete(existing);
+        verify(reviewRepository).deleteById(existing.getId());
     }
 
     @Test
@@ -169,7 +169,7 @@ class ReviewServiceTest {
 
         assertThatThrownBy(() -> reviewService.delete(USER_ID, REVIEW_ID))
                 .isInstanceOf(ReviewNotFoundException.class);
-        verify(reviewRepository, never()).delete(any(Review.class));
+        verify(reviewRepository, never()).deleteById(any());
     }
 
     @Test
@@ -308,7 +308,7 @@ class ReviewServiceTest {
 
         reviewService.deleteAsAdmin(REVIEW_ID);
 
-        verify(reviewRepository).delete(theirs);
+        verify(reviewRepository).deleteById(theirs.getId());
     }
 
     @Test

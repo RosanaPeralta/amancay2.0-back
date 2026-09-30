@@ -146,6 +146,7 @@ class PaymentServiceTest {
         Payment rejected = payment(PAYMENT_ID, order, PaymentStatus.RECHAZADO);
         CreatePaymentRequest request = cardRequest();
         when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(rejected));
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
         when(processorResolver.resolve(PaymentMethod.TARJETA_CREDITO)).thenReturn(processor);
         when(processor.process(order, request)).thenReturn(PaymentResult.approved());
         when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -213,6 +214,7 @@ class PaymentServiceTest {
         Order order = order(ORDER_ID, BigDecimal.valueOf(200));
         Payment pending = payment(PAYMENT_ID, order, PaymentStatus.PENDIENTE);
         when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(pending));
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
         when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         PaymentDto result = paymentService.confirmPayment(PAYMENT_ID,

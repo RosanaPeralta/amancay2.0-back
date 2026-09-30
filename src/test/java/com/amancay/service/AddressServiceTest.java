@@ -106,7 +106,8 @@ class AddressServiceTest {
                 new UpdateAddressRequest("Otra", 2, "A", "Otra ciudad", "Prov", "País", "1000"));
 
         assertThat(result.street()).isEqualTo("Otra");
-        assertThat(result.floorApt()).isEqualTo(1);
+        assertThat(result.number()).isEqualTo(2);
+        assertThat(result.floorApt()).isEqualTo("A");
     }
 
     @Test
@@ -129,13 +130,13 @@ class AddressServiceTest {
 
         addressService.delete(USER_ID, ADDRESS_ID);
 
-        verify(addressRepository).delete(existing);
+        verify(addressRepository).deleteById(ADDRESS_ID);
     }
 
     @Test
     void setDefaultClearsTheCurrentOneBeforeMarkingTheNew() {
         Address target = address();
-        when(addressRepository.findByIdAndUserId(ADDRESS_ID, USER_ID)).thenReturn(Optional.of(target));
+        when(addressRepository.findByIdAndUserId(ADDRESS_ID, USER_ID)).thenReturn(Optional.of(target), Optional.of(target));
         when(addressRepository.saveAndFlush(any(Address.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AddressDto result = addressService.setDefault(USER_ID, ADDRESS_ID);
@@ -143,6 +144,7 @@ class AddressServiceTest {
         assertThat(result.isDefault()).isTrue();
         InOrder inOrder = inOrder(addressRepository);
         inOrder.verify(addressRepository).clearDefaultByUserId(USER_ID);
+        inOrder.verify(addressRepository, org.mockito.Mockito.times(2)).findByIdAndUserId(ADDRESS_ID, USER_ID);
         inOrder.verify(addressRepository).saveAndFlush(target);
     }
 
@@ -156,6 +158,8 @@ class AddressServiceTest {
     }
 
     private Address address() {
-        return Address.create(USER_ID, "Calle", 1, null, "Ciudad", null, "País", null);
+        Address address = Address.create(USER_ID, "Calle", 1, null, "Ciudad", null, "País", null);
+        org.springframework.test.util.ReflectionTestUtils.setField(address, "id", ADDRESS_ID);
+        return address;
     }
 }

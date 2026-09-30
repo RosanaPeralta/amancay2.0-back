@@ -26,7 +26,7 @@ class AddressTest {
         assertThat(address.getUserId()).isEqualTo(USER_ID);
         assertThat(address.getStreet()).isEqualTo("Av. Siempreviva");
         assertThat(address.getNumber()).isEqualTo(742);
-        assertThat(address.getFloorApt()).isEqualTo(3);
+        assertThat(address.getFloorApt()).isEqualTo("3 A");
         assertThat(address.getCity()).isEqualTo("Springfield");
         assertThat(address.getProvince()).isEqualTo("Buenos Aires");
         assertThat(address.getCountry()).isEqualTo("Argentina");

@@ -29,9 +29,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.amancay.config.SecurityConfig;
-import com.amancay.controllers.AdminUserController;
-import com.amancay.controllers.ProductReviewController;
-import com.amancay.controllers.UserController;
+import com.amancay.infrastructure.adapters.in.web.AdminUserController;
+import com.amancay.infrastructure.adapters.in.web.ProductReviewController;
+import com.amancay.infrastructure.adapters.in.web.UserController;
 import com.amancay.dto.PageResponse;
 import com.amancay.dto.UserDto;
 import com.amancay.entity.Role;
