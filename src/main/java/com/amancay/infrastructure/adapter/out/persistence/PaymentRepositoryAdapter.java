@@ -10,6 +10,9 @@ import com.amancay.domain.exception.PaymentNotFoundException;
 import com.amancay.domain.model.Payment;
 import com.amancay.domain.model.PaymentStatus;
 import com.amancay.domain.port.PaymentRepositoryPort;
+import com.amancay.infrastructure.adapter.out.persistence.entity.PaymentJpaEntity;
+import com.amancay.infrastructure.adapter.out.persistence.mapper.PaymentPersistenceMapper;
+import com.amancay.infrastructure.adapter.out.persistence.repository.SpringDataPaymentRepository;
 
 @Component
 class PaymentRepositoryAdapter implements PaymentRepositoryPort {

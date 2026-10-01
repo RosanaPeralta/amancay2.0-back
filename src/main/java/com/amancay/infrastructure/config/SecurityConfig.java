@@ -35,10 +35,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.amancay.application.port.in.GetOrProvisionUserUseCase;
 import com.amancay.infrastructure.security.DevUserAuthenticationFilter;
 import com.amancay.infrastructure.security.SupabaseJwtAuthenticationConverter;
 import com.amancay.infrastructure.security.UserRoleAuthoritiesFilter;
-import com.amancay.service.UserService;
 
 @Configuration
 @EnableWebSecurity
@@ -49,7 +49,7 @@ public class SecurityConfig {
 
     private final SupabaseJwtAuthenticationConverter jwtAuthenticationConverter;
 
-    private final UserService userService;
+    private final GetOrProvisionUserUseCase getOrProvisionUser;
 
     @Value("${amancay.security.dev-user.enabled:false}")
     private boolean devUserEnabled;
@@ -63,9 +63,9 @@ public class SecurityConfig {
     @Value("${amancay.cors.allowed-origins:http://localhost:5173}")
     private List<String> allowedOrigins;
 
-    public SecurityConfig(SupabaseJwtAuthenticationConverter jwtAuthenticationConverter, UserService userService) {
+    public SecurityConfig(SupabaseJwtAuthenticationConverter jwtAuthenticationConverter, GetOrProvisionUserUseCase getOrProvisionUser) {
         this.jwtAuthenticationConverter = jwtAuthenticationConverter;
-        this.userService = userService;
+        this.getOrProvisionUser = getOrProvisionUser;
     }
 
     @Bean
@@ -110,7 +110,7 @@ public class SecurityConfig {
 
         // Corre despues de los dos filtros de autenticacion: el del dev-user se registra antes
         // del de bearer-token, asi que lo que va despues de este ultimo ve al que haya autenticado.
-        http.addFilterAfter(new UserRoleAuthoritiesFilter(userService), BearerTokenAuthenticationFilter.class);
+        http.addFilterAfter(new UserRoleAuthoritiesFilter(getOrProvisionUser), BearerTokenAuthenticationFilter.class);
 
         http
                 .cors(Customizer.withDefaults())

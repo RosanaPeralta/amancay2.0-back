@@ -7,15 +7,15 @@ import org.springframework.stereotype.Component;
 
 import com.amancay.application.port.out.LoadShippingAddressPort;
 import com.amancay.domain.model.ShippingAddress;
-import com.amancay.entity.Address;
-import com.amancay.repository.AddressRepository;
+import com.amancay.infrastructure.adapter.out.persistence.entity.AddressJpaEntity;
+import com.amancay.infrastructure.adapter.out.persistence.repository.SpringDataAddressRepository;
 
 @Component
 class ShippingAddressAdapter implements LoadShippingAddressPort {
 
-    private final AddressRepository addressRepository;
+    private final SpringDataAddressRepository addressRepository;
 
-    ShippingAddressAdapter(AddressRepository addressRepository) {
+    ShippingAddressAdapter(SpringDataAddressRepository addressRepository) {
         this.addressRepository = addressRepository;
     }
 
@@ -24,7 +24,7 @@ class ShippingAddressAdapter implements LoadShippingAddressPort {
         return addressRepository.findById(addressId).map(this::toShippingAddress);
     }
 
-    private ShippingAddress toShippingAddress(Address address) {
+    private ShippingAddress toShippingAddress(AddressJpaEntity address) {
         return new ShippingAddress(address.getStreet(), String.valueOf(address.getNumber()), address.getFloorApt(),
                 address.getCity(), address.getProvince(), address.getCountry(), address.getPostalCode());
     }

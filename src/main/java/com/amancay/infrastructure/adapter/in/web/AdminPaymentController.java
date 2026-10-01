@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.amancay.application.port.in.ConfirmPaymentUseCase;
 import com.amancay.application.port.in.ListPendingPaymentsQuery;
+import com.amancay.infrastructure.adapter.in.web.dto.ConfirmPaymentRequest;
+import com.amancay.infrastructure.adapter.in.web.dto.PaymentResponse;
+import com.amancay.infrastructure.adapter.in.web.dto.PendingPaymentResponse;
 
 import jakarta.validation.Valid;
 

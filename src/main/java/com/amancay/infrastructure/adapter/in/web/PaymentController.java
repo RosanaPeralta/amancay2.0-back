@@ -17,6 +17,9 @@ import com.amancay.application.port.in.AttachTransferReferenceUseCase;
 import com.amancay.application.port.in.CreatePaymentUseCase;
 import com.amancay.application.port.in.ListOrderPaymentsQuery;
 import com.amancay.application.port.in.RetryPaymentUseCase;
+import com.amancay.infrastructure.adapter.in.web.dto.AttachTransferReferenceRequest;
+import com.amancay.infrastructure.adapter.in.web.dto.CreatePaymentRequest;
+import com.amancay.infrastructure.adapter.in.web.dto.PaymentResponse;
 import com.amancay.infrastructure.security.LoggedUser;
 
 import jakarta.validation.Valid;

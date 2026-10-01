@@ -8,21 +8,21 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 import com.amancay.application.port.out.BuyerEmailPort;
-import com.amancay.entity.User;
-import com.amancay.repository.UserRepository;
+import com.amancay.infrastructure.adapter.out.persistence.entity.UserJpaEntity;
+import com.amancay.infrastructure.adapter.out.persistence.repository.SpringDataUserRepository;
 
 @Component
 class BuyerEmailAdapter implements BuyerEmailPort {
 
-    private final UserRepository userRepository;
+    private final SpringDataUserRepository userRepository;
 
-    BuyerEmailAdapter(UserRepository userRepository) {
+    BuyerEmailAdapter(SpringDataUserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
     @Override
     public Map<UUID, String> findEmailsByUserId(Set<UUID> userIds) {
         return userRepository.findAllById(userIds).stream()
-                .collect(Collectors.toMap(User::getId, User::getEmail));
+                .collect(Collectors.toMap(UserJpaEntity::getId, UserJpaEntity::getEmail));
     }
 }

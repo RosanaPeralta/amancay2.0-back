@@ -20,6 +20,7 @@ import com.amancay.application.port.out.LoadRequesterPort;
 import com.amancay.application.port.out.LoadShippingAddressPort;
 import com.amancay.application.port.out.PublishOrderEventPort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
+import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.OrderAccessDeniedException;
 import com.amancay.domain.exception.OrderNotFoundException;
 import com.amancay.domain.model.Order;
@@ -27,7 +28,6 @@ import com.amancay.domain.model.OrderItem;
 import com.amancay.domain.model.OrderStatus;
 import com.amancay.domain.model.ShippingAddress;
 import com.amancay.domain.port.OrderRepositoryPort;
-import com.amancay.exceptions.InsufficientStockException;
 
 @Service
 public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCase, GetOrderQuery, ListOrdersQuery {

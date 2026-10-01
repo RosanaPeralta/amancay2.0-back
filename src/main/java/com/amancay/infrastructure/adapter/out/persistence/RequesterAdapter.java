@@ -5,16 +5,16 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 import com.amancay.application.port.out.LoadRequesterPort;
-import com.amancay.entity.Role;
-import com.amancay.exceptions.UserNotFoundException;
-import com.amancay.repository.UserRepository;
+import com.amancay.domain.exception.UserNotFoundException;
+import com.amancay.domain.model.Role;
+import com.amancay.infrastructure.adapter.out.persistence.repository.SpringDataUserRepository;
 
 @Component
 class RequesterAdapter implements LoadRequesterPort {
 
-    private final UserRepository userRepository;
+    private final SpringDataUserRepository userRepository;
 
-    RequesterAdapter(UserRepository userRepository) {
+    RequesterAdapter(SpringDataUserRepository userRepository) {
         this.userRepository = userRepository;
     }
 

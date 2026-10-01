@@ -28,15 +28,19 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.amancay.controllers.AdminUserController;
-import com.amancay.controllers.ProductReviewController;
-import com.amancay.controllers.UserController;
-import com.amancay.dto.PageResponse;
-import com.amancay.dto.UserDto;
-import com.amancay.entity.Role;
+import com.amancay.application.port.in.ChangeUserRoleUseCase;
+import com.amancay.application.port.in.CreateReviewUseCase;
+import com.amancay.application.port.in.GetOrProvisionUserUseCase;
+import com.amancay.application.port.in.ListReviewsQuery;
+import com.amancay.application.port.in.ListUsersQuery;
+import com.amancay.application.port.in.UpdateProfileUseCase;
+import com.amancay.domain.model.PageResult;
+import com.amancay.domain.model.Role;
+import com.amancay.domain.model.User;
+import com.amancay.infrastructure.adapter.in.web.AdminUserController;
+import com.amancay.infrastructure.adapter.in.web.ProductReviewController;
+import com.amancay.infrastructure.adapter.in.web.UserController;
 import com.amancay.infrastructure.config.SecurityConfig;
-import com.amancay.service.ReviewService;
-import com.amancay.service.UserService;
 
 /**
  * Verifica las reglas de autorizacion de {@link SecurityConfig} de punta a punta con MockMvc:
@@ -56,10 +60,22 @@ class SecurityRulesTest {
     private JwtDecoder jwtDecoder;
 
     @MockitoBean
-    private UserService userService;
+    private GetOrProvisionUserUseCase getOrProvisionUser;
 
     @MockitoBean
-    private ReviewService reviewService;
+    private UpdateProfileUseCase updateProfile;
+
+    @MockitoBean
+    private ListUsersQuery listUsers;
+
+    @MockitoBean
+    private ChangeUserRoleUseCase changeUserRole;
+
+    @MockitoBean
+    private ListReviewsQuery listReviews;
+
+    @MockitoBean
+    private CreateReviewUseCase createReview;
 
     @Test
     void meWithoutTokenIsUnauthorizedWithJsonBody() throws Exception {
@@ -72,9 +88,8 @@ class SecurityRulesTest {
     @Test
     void meWithABuyerTokenIsOk() throws Exception {
         LoggedUser buyer = loggedUser("buyer@amancay.com");
-        when(userService.getOrProvisionRole(buyer.id(), buyer.email(), buyer.name())).thenReturn(Role.BUYER);
-        when(userService.getOrProvision(buyer.id(), buyer.email(), buyer.name()))
-                .thenReturn(new UserDto(buyer.id(), buyer.email(), buyer.name(), Role.BUYER, Instant.now()));
+        when(getOrProvisionUser.getOrProvision(buyer.id(), buyer.email(), buyer.name()))
+                .thenReturn(new User(buyer.id(), buyer.email(), buyer.name(), Role.BUYER, true, Instant.now(), null));
 
         mockMvc.perform(get("/api/me").with(authentication(tokenFor(buyer))))
                 .andExpect(status().isOk())
@@ -85,7 +100,7 @@ class SecurityRulesTest {
     @Test
     void adminUsersAsBuyerIsForbiddenWithJsonBody() throws Exception {
         LoggedUser buyer = loggedUser("buyer@amancay.com");
-        when(userService.getOrProvisionRole(buyer.id(), buyer.email(), buyer.name())).thenReturn(Role.BUYER);
+        when(getOrProvisionUser.getOrProvision(buyer.id(), buyer.email(), buyer.name())).thenReturn(userWithRole(buyer, Role.BUYER));
 
         mockMvc.perform(get("/api/admin/users").with(authentication(tokenFor(buyer))))
                 .andExpect(status().isForbidden())
@@ -95,8 +110,8 @@ class SecurityRulesTest {
     @Test
     void adminUsersAsAdminIsOk() throws Exception {
         LoggedUser admin = loggedUser("admin@amancay.com");
-        when(userService.getOrProvisionRole(admin.id(), admin.email(), admin.name())).thenReturn(Role.ADMIN);
-        when(userService.listUsers(isNull(), any())).thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0));
+        when(getOrProvisionUser.getOrProvision(admin.id(), admin.email(), admin.name())).thenReturn(userWithRole(admin, Role.ADMIN));
+        when(listUsers.list(isNull(), any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
         mockMvc.perform(get("/api/admin/users").with(authentication(tokenFor(admin))))
                 .andExpect(status().isOk())
@@ -125,6 +140,10 @@ class SecurityRulesTest {
 
     private static LoggedUser loggedUser(String email) {
         return new LoggedUser(UUID.randomUUID(), email, "Ada");
+    }
+
+    private static User userWithRole(LoggedUser loggedUser, Role role) {
+        return new User(loggedUser.id(), loggedUser.email(), loggedUser.name(), role, true, Instant.now(), null);
     }
 
     private static Authentication tokenFor(LoggedUser loggedUser) {

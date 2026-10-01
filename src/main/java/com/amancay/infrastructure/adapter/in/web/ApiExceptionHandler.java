@@ -12,24 +12,25 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.amancay.domain.exception.AddressLimitReachedException;
+import com.amancay.domain.exception.AddressNotFoundException;
+import com.amancay.domain.exception.CategoryNotFoundException;
+import com.amancay.domain.exception.DiscountNotFoundException;
+import com.amancay.domain.exception.DuplicateCategoryNameException;
+import com.amancay.domain.exception.DuplicateFavoriteException;
+import com.amancay.domain.exception.DuplicateReviewException;
+import com.amancay.domain.exception.FavoriteNotFoundException;
+import com.amancay.domain.exception.InactiveUserException;
+import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
 import com.amancay.domain.exception.OrderAccessDeniedException;
 import com.amancay.domain.exception.OrderNotFoundException;
 import com.amancay.domain.exception.PaymentNotFoundException;
-import com.amancay.exceptions.AddressLimitReachedException;
-import com.amancay.exceptions.AddressNotFoundException;
-import com.amancay.exceptions.CategoryNotFoundException;
-import com.amancay.exceptions.DiscountNotFoundException;
-import com.amancay.exceptions.DuplicateCategoryNameException;
-import com.amancay.exceptions.DuplicateFavoriteException;
-import com.amancay.exceptions.DuplicateReviewException;
-import com.amancay.exceptions.FavoriteNotFoundException;
-import com.amancay.exceptions.InsufficientStockException;
-import com.amancay.exceptions.ProductNotFoundException;
-import com.amancay.exceptions.PurchaseRequiredException;
-import com.amancay.exceptions.ReviewNotFoundException;
-import com.amancay.exceptions.SelfRoleChangeException;
-import com.amancay.exceptions.UserNotFoundException;
+import com.amancay.domain.exception.ProductNotFoundException;
+import com.amancay.domain.exception.PurchaseRequiredException;
+import com.amancay.domain.exception.ReviewNotFoundException;
+import com.amancay.domain.exception.SelfRoleChangeException;
+import com.amancay.domain.exception.UserNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -91,6 +92,13 @@ public class ApiExceptionHandler {
     /** {@code @PreAuthorize} rechazado (BUYER contra un endpoint ADMIN): mismo formato que el resto. */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied"));
+    }
+
+    // InactiveUserException ya no extiende AccessDeniedException (el dominio no depende de Spring
+    // Security); se mantiene la misma respuesta que antes.
+    @ExceptionHandler(InactiveUserException.class)
+    public ResponseEntity<Map<String, String>> handleInactiveUser(InactiveUserException exception) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied"));
     }
 

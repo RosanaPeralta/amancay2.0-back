@@ -21,6 +21,9 @@ import com.amancay.application.port.in.ChangeOrderStatusUseCase;
 import com.amancay.application.port.in.CreateOrderUseCase;
 import com.amancay.application.port.in.GetOrderQuery;
 import com.amancay.application.port.in.ListOrdersQuery;
+import com.amancay.infrastructure.adapter.in.web.dto.CreateOrderRequest;
+import com.amancay.infrastructure.adapter.in.web.dto.OrderResponse;
+import com.amancay.infrastructure.adapter.in.web.dto.UpdateOrderStatusRequest;
 import com.amancay.infrastructure.security.LoggedUser;
 
 import jakarta.validation.Valid;

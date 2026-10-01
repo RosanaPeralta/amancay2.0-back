@@ -20,8 +20,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import com.amancay.entity.Role;
-import com.amancay.service.UserService;
+import com.amancay.application.port.in.GetOrProvisionUserUseCase;
+import com.amancay.domain.model.Role;
+import com.amancay.domain.model.User;
 
 /**
  * Protege la resolución de roles que habilita las autorizaciones por rol de toda la API.
@@ -43,19 +44,19 @@ import com.amancay.service.UserService;
  * ese escenario la lógica se mudaría al converter del token y los tests deberían mudarse con ella,
  * no borrarse. Mientras el rol se resuelva por consulta, este test se queda.
  *
- * <p>No levanta contexto de Spring: mockea {@link UserService} y corre en milisegundos.
+ * <p>No levanta contexto de Spring: mockea {@link GetOrProvisionUserUseCase} y corre en milisegundos.
  */
 @ExtendWith(MockitoExtension.class)
 class UserRoleAuthoritiesFilterTest {
 
     @Mock
-    private UserService userService;
+    private GetOrProvisionUserUseCase getOrProvisionUser;
 
     private UserRoleAuthoritiesFilter filter;
 
     @BeforeEach
     void setUp() {
-        filter = new UserRoleAuthoritiesFilter(userService);
+        filter = new UserRoleAuthoritiesFilter(getOrProvisionUser);
     }
 
     @AfterEach
@@ -66,7 +67,7 @@ class UserRoleAuthoritiesFilterTest {
     @Test
     void grantsRoleAdminToAnAdminUser() throws Exception {
         LoggedUser loggedUser = authenticate("admin@amancay.com");
-        when(userService.getOrProvisionRole(loggedUser.id(), loggedUser.email(), loggedUser.name())).thenReturn(Role.ADMIN);
+        when(getOrProvisionUser.getOrProvision(loggedUser.id(), loggedUser.email(), loggedUser.name())).thenReturn(user(Role.ADMIN));
 
         filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), new MockFilterChain());
 
@@ -78,7 +79,7 @@ class UserRoleAuthoritiesFilterTest {
     @Test
     void grantsRoleBuyerToABuyerUser() throws Exception {
         LoggedUser loggedUser = authenticate("buyer@amancay.com");
-        when(userService.getOrProvisionRole(loggedUser.id(), loggedUser.email(), loggedUser.name())).thenReturn(Role.BUYER);
+        when(getOrProvisionUser.getOrProvision(loggedUser.id(), loggedUser.email(), loggedUser.name())).thenReturn(user(Role.BUYER));
 
         filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), new MockFilterChain());
 
@@ -91,7 +92,7 @@ class UserRoleAuthoritiesFilterTest {
         filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), new MockFilterChain());
 
         assertThat(currentAuthentication()).isNull();
-        verifyNoInteractions(userService);
+        verifyNoInteractions(getOrProvisionUser);
     }
 
     private LoggedUser authenticate(String email) {
@@ -104,8 +105,8 @@ class UserRoleAuthoritiesFilterTest {
     @Test
     void inactiveUserGetsJson403AndNeverReachesTheController() throws Exception {
         LoggedUser user = authenticate("inactive@amancay.com");
-        when(userService.getOrProvisionRole(user.id(), user.email(), user.name()))
-                .thenThrow(new com.amancay.exceptions.InactiveUserException());
+        when(getOrProvisionUser.getOrProvision(user.id(), user.email(), user.name()))
+                .thenThrow(new com.amancay.domain.exception.InactiveUserException());
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
@@ -120,7 +121,7 @@ class UserRoleAuthoritiesFilterTest {
     @Test
     void databaseFailureGetsSanitizedJsonAndNeverReachesTheController() throws Exception {
         LoggedUser user = authenticate("buyer@amancay.com");
-        when(userService.getOrProvisionRole(user.id(), user.email(), user.name()))
+        when(getOrProvisionUser.getOrProvision(user.id(), user.email(), user.name()))
                 .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("private database detail"));
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
@@ -131,6 +132,10 @@ class UserRoleAuthoritiesFilterTest {
         assertThat(response.getContentAsString()).isEqualTo("{\"error\":\"User authentication unavailable\"}");
         assertThat(chain.getRequest()).isNull();
         assertThat(currentAuthentication()).isNull();
+    }
+
+    private static User user(Role role) {
+        return new User(UUID.randomUUID(), "user@amancay.com", "Ada", role, true, null, null);
     }
 
     private Authentication currentAuthentication() {

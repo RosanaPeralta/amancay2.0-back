@@ -5,14 +5,14 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 import com.amancay.application.port.out.StockPort;
-import com.amancay.repository.ProductVariantRepository;
+import com.amancay.infrastructure.adapter.out.persistence.repository.SpringDataProductVariantRepository;
 
 @Component
 class StockAdapter implements StockPort {
 
-    private final ProductVariantRepository productVariantRepository;
+    private final SpringDataProductVariantRepository productVariantRepository;
 
-    StockAdapter(ProductVariantRepository productVariantRepository) {
+    StockAdapter(SpringDataProductVariantRepository productVariantRepository) {
         this.productVariantRepository = productVariantRepository;
     }
 

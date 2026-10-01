@@ -22,17 +22,17 @@ import com.amancay.application.port.out.LoadRequesterPort;
 import com.amancay.application.port.out.LoadShippingAddressPort;
 import com.amancay.application.port.out.PublishOrderEventPort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
+import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
 import com.amancay.domain.exception.OrderAccessDeniedException;
 import com.amancay.domain.exception.OrderNotFoundException;
+import com.amancay.domain.exception.UserNotFoundException;
 import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderFixtures;
 import com.amancay.domain.model.OrderStatus;
 import com.amancay.domain.model.OrderStatusChange;
 import com.amancay.domain.model.ShippingAddress;
 import com.amancay.domain.port.OrderRepositoryPort;
-import com.amancay.exceptions.InsufficientStockException;
-import com.amancay.exceptions.UserNotFoundException;
 
 // Sin Mockito ni Spring: cada puerto de salida se reemplaza por un fake en memoria.
 class OrderServiceTest {

@@ -23,6 +23,7 @@ import com.amancay.application.port.in.PaymentOutcome;
 import com.amancay.application.port.out.PayableOrderPort.PayableOrder;
 import com.amancay.application.port.out.PayableOrderPort;
 import com.amancay.application.port.out.StockPort;
+import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.OrderAccessDeniedException;
 import com.amancay.domain.exception.OrderNotFoundException;
 import com.amancay.domain.exception.PaymentNotFoundException;
@@ -32,7 +33,6 @@ import com.amancay.domain.model.PaymentMethod;
 import com.amancay.domain.model.PaymentResult;
 import com.amancay.domain.model.PaymentStatus;
 import com.amancay.domain.port.PaymentRepositoryPort;
-import com.amancay.exceptions.InsufficientStockException;
 
 // Sin Mockito ni Spring: cada puerto de salida se reemplaza por un fake en memoria.
 class PaymentServiceTest {

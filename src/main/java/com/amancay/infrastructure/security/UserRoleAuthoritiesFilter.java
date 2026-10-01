@@ -9,9 +9,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.amancay.entity.Role;
-import com.amancay.exceptions.InactiveUserException;
-import com.amancay.service.UserService;
+import com.amancay.application.port.in.GetOrProvisionUserUseCase;
+import com.amancay.domain.exception.InactiveUserException;
+import com.amancay.domain.model.Role;
 import org.springframework.dao.DataAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,10 +34,10 @@ import jakarta.servlet.http.HttpServletResponse;
 public class UserRoleAuthoritiesFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(UserRoleAuthoritiesFilter.class);
 
-    private final UserService userService;
+    private final GetOrProvisionUserUseCase getOrProvisionUser;
 
-    public UserRoleAuthoritiesFilter(UserService userService) {
-        this.userService = userService;
+    public UserRoleAuthoritiesFilter(GetOrProvisionUserUseCase getOrProvisionUser) {
+        this.getOrProvisionUser = getOrProvisionUser;
     }
 
     @Override
@@ -52,7 +52,7 @@ public class UserRoleAuthoritiesFilter extends OncePerRequestFilter {
 
             Role role;
             try {
-                role = userService.getOrProvisionRole(loggedUser.id(), loggedUser.email(), loggedUser.name());
+                role = getOrProvisionUser.getOrProvision(loggedUser.id(), loggedUser.email(), loggedUser.name()).getRole();
             } catch (InactiveUserException exception) {
                 reject(response, HttpServletResponse.SC_FORBIDDEN, "User is inactive");
                 return;

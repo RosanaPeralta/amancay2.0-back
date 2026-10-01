@@ -22,13 +22,13 @@ import com.amancay.application.port.out.PayableOrderPort.PayableOrder;
 import com.amancay.application.port.out.PayableOrderPort;
 import com.amancay.application.port.out.PaymentProcessorPort;
 import com.amancay.application.port.out.StockPort;
+import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.PaymentNotFoundException;
 import com.amancay.domain.model.Payment;
 import com.amancay.domain.model.PaymentDetails;
 import com.amancay.domain.model.PaymentResult;
 import com.amancay.domain.model.PaymentStatus;
 import com.amancay.domain.port.PaymentRepositoryPort;
-import com.amancay.exceptions.InsufficientStockException;
 
 @Service
 public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase, ConfirmPaymentUseCase,
