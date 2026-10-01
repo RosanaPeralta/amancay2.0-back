@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.amancay.dto.PageResponse;
 import com.amancay.dto.ReviewDto;
-import com.amancay.security.LoggedUser;
+import com.amancay.infrastructure.security.LoggedUser;
 import com.amancay.service.ReviewService;
 
 /** Mis reseñas, incluidas las ocultadas por moderación (el DTO trae el {@code status}). */

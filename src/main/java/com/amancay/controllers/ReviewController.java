@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.amancay.dto.ReviewDto;
 import com.amancay.dto.UpdateReviewRequest;
-import com.amancay.security.LoggedUser;
+import com.amancay.infrastructure.security.LoggedUser;
 import com.amancay.service.ReviewService;
 
 import jakarta.validation.Valid;

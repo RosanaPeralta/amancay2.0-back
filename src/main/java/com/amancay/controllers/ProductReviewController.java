@@ -21,7 +21,7 @@ import com.amancay.dto.PageResponse;
 import com.amancay.dto.RatingSummaryDto;
 import com.amancay.dto.ReviewDto;
 import com.amancay.dto.ReviewSort;
-import com.amancay.security.LoggedUser;
+import com.amancay.infrastructure.security.LoggedUser;
 import com.amancay.service.ReviewService;
 
 import jakarta.validation.Valid;

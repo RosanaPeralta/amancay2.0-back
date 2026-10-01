@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.amancay.dto.AddressDto;
 import com.amancay.dto.CreateAddressRequest;
 import com.amancay.dto.UpdateAddressRequest;
-import com.amancay.security.LoggedUser;
+import com.amancay.infrastructure.security.LoggedUser;
 import com.amancay.service.AddressService;
 
 import jakarta.validation.Valid;

@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.amancay.dto.AddFavoriteRequest;
 import com.amancay.dto.FavoriteDto;
 import com.amancay.dto.PageResponse;
-import com.amancay.security.LoggedUser;
+import com.amancay.infrastructure.security.LoggedUser;
 import com.amancay.service.FavoriteService;
 
 import jakarta.validation.Valid;
