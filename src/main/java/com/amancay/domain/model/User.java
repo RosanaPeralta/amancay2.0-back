@@ -3,9 +3,6 @@ package com.amancay.domain.model;
 import java.time.Instant;
 import java.util.UUID;
 
-import lombok.Getter;
-
-@Getter
 public class User {
 
     private final UUID id;
@@ -52,5 +49,33 @@ public class User {
 
     public void changeRole(Role role) {
         this.role = role;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 }

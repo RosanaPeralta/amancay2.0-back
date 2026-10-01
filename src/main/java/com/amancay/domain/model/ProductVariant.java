@@ -3,9 +3,6 @@ package com.amancay.domain.model;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-import lombok.Getter;
-
-@Getter
 public class ProductVariant {
 
     private final UUID id;
@@ -21,5 +18,17 @@ public class ProductVariant {
     void update(BigDecimal price, int stockQuantity) {
         this.price = price;
         this.stockQuantity = stockQuantity;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public int getStockQuantity() {
+        return stockQuantity;
     }
 }

@@ -2,9 +2,6 @@ package com.amancay.domain.model;
 
 import java.util.UUID;
 
-import lombok.Getter;
-
-@Getter
 public class Category {
 
     private final UUID id;
@@ -21,5 +18,13 @@ public class Category {
 
     public void rename(String name) {
         this.name = name;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
     }
 }

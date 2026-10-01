@@ -4,14 +4,11 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-import lombok.Getter;
-
 /**
  * Dirección de envío de un usuario. Igual que {@link Review}, una nueva solo se construye por
  * la factory estática y valida sus propios campos: obligatorios calle, altura, localidad y país.
  * La predeterminada la administra el caso de uso; acá solo se marca y desmarca.
  */
-@Getter
 public class Address {
 
     private static final int MAX_STREET_LENGTH = 255;
@@ -106,5 +103,53 @@ public class Address {
                     field + " must be at most " + maxLength + " characters, but was " + trimmed.length());
         }
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public UUID getUserId() {
+        return userId;
+    }
+
+    public String getStreet() {
+        return street;
+    }
+
+    public Integer getNumber() {
+        return number;
+    }
+
+    public String getFloorApt() {
+        return floorApt;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public String getProvince() {
+        return province;
+    }
+
+    public String getCountry() {
+        return country;
+    }
+
+    public String getPostalCode() {
+        return postalCode;
+    }
+
+    public boolean isDefaultAddress() {
+        return defaultAddress;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 }

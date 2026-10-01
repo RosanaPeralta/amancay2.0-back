@@ -4,9 +4,6 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-import lombok.Getter;
-
-@Getter
 public class Review {
 
     public static final int MIN_RATING = 1;
@@ -85,5 +82,41 @@ public class Review {
                     "title must be at most " + MAX_TITLE_LENGTH + " characters, but was " + title.length());
         }
         this.title = title;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public UUID getProductId() {
+        return productId;
+    }
+
+    public UUID getUserId() {
+        return userId;
+    }
+
+    public int getRating() {
+        return rating;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getComment() {
+        return comment;
+    }
+
+    public ReviewStatus getStatus() {
+        return status;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 }

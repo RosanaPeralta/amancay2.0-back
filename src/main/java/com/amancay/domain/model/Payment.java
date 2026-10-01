@@ -4,12 +4,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-import lombok.Getter;
-
 // Una orden puede tener varios Payment (uno por cada intento): asi se modela el
 // reintento de un pago fallido, sin necesidad de una entidad extra. La orden se
 // referencia solo por id.
-@Getter
 public class Payment {
 
     private final UUID id;
@@ -77,5 +74,37 @@ public class Payment {
             throw new IllegalStateException("Only a pending payment can receive a reference code");
         }
         this.transferReference = reference;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public UUID getOrderId() {
+        return orderId;
+    }
+
+    public BigDecimal getAmount() {
+        return amount;
+    }
+
+    public PaymentMethod getMethod() {
+        return method;
+    }
+
+    public PaymentStatus getStatus() {
+        return status;
+    }
+
+    public String getTransferReference() {
+        return transferReference;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 }

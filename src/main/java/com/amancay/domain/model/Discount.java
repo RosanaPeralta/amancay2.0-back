@@ -3,9 +3,6 @@ package com.amancay.domain.model;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-import lombok.Getter;
-
-@Getter
 public class Discount {
 
     private static final BigDecimal HUNDRED = new BigDecimal("100");
@@ -58,5 +55,17 @@ public class Discount {
         if (percentage.compareTo(BigDecimal.ZERO) < 0 || percentage.compareTo(HUNDRED) > 0) {
             throw new IllegalArgumentException("percentage must be between 0 and 100");
         }
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public BigDecimal getPercentage() {
+        return percentage;
+    }
+
+    public String getDescription() {
+        return description;
     }
 }

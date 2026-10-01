@@ -9,9 +9,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import lombok.Getter;
-
-@Getter
 public class Product {
 
     private final UUID id;
@@ -137,6 +134,42 @@ public class Product {
 
     public ProductSummary toSummary() {
         return new ProductSummary(id, name, slug, active, createdAt, updatedAt);
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public String getShortDescription() {
+        return shortDescription;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public Discount getDiscount() {
+        return discount;
     }
 
     public record NewVariant(BigDecimal price, int stockQuantity) {

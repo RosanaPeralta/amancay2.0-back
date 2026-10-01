@@ -8,12 +8,9 @@ import java.util.UUID;
 
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
 
-import lombok.Getter;
-
 // Modelo de dominio puro: no sabe nada de JPA ni de Spring. Lo que es propio de
 // la base (ids generados, timestamps, el cast al enum nativo de Postgres) vive en
 // infrastructure/adapter/out/persistence y se traduce con OrderPersistenceMapper.
-@Getter
 public class Order {
 
     private final UUID id;
@@ -78,5 +75,49 @@ public class Order {
 
     public List<OrderStatusChange> getStatusHistory() {
         return List.copyOf(statusHistory);
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public UUID getUserId() {
+        return userId;
+    }
+
+    public UUID getShippingAddressId() {
+        return shippingAddressId;
+    }
+
+    public ShippingAddress getShippingAddress() {
+        return shippingAddress;
+    }
+
+    public OrderStatus getStatus() {
+        return status;
+    }
+
+    public BigDecimal getSubtotal() {
+        return subtotal;
+    }
+
+    public BigDecimal getShippingCost() {
+        return shippingCost;
+    }
+
+    public BigDecimal getTotal() {
+        return total;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public List<OrderItem> getItems() {
+        return items;
     }
 }
