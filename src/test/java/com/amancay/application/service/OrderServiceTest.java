@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -237,6 +238,12 @@ class OrderServiceTest {
         @Override
         public List<Order> findAllById(Collection<UUID> ids) {
             return ids.stream().map(store::get).filter(order -> order != null).map(InMemoryOrders::copy).toList();
+        }
+
+        @Override
+        public List<Order> findAllNewestFirst() {
+            return store.values().stream().sorted(Comparator.comparing(Order::getCreatedAt).reversed())
+                    .map(InMemoryOrders::copy).toList();
         }
 
         @Override

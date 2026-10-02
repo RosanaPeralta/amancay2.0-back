@@ -17,6 +17,9 @@ public interface OrderRepositoryPort {
 
     List<Order> findAllById(Collection<UUID> ids);
 
+    // Todas las ordenes de todos los usuarios, mas nuevas primero (panel de admin).
+    List<Order> findAllNewestFirst();
+
     // Devuelve la orden tal como quedo persistida (con ids y timestamps asignados).
     Order save(Order order);
 }
