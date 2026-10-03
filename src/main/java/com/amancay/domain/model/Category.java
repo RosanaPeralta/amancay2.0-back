@@ -1,0 +1,30 @@
+package com.amancay.domain.model;
+
+import java.util.UUID;
+
+public class Category {
+
+    private final UUID id;
+    private String name;
+
+    public Category(UUID id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public static Category create(String name) {
+        return new Category(null, name);
+    }
+
+    public void rename(String name) {
+        this.name = name;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+}

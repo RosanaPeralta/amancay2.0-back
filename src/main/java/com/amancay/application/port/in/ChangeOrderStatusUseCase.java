@@ -1,0 +1,14 @@
+package com.amancay.application.port.in;
+
+import java.util.UUID;
+
+import com.amancay.domain.model.Order;
+import com.amancay.domain.model.OrderStatus;
+
+// Unico punto de entrada para mover el estado de un pedido: lo usa tanto una
+// accion sincrona (admin marca "despachado" desde el panel) como otro caso de uso
+// (payment, cuando un pago queda aprobado) o, mas adelante, un consumer de la
+// cola de mensajes. La validacion de la transicion vive en OrderStatus (State).
+public interface ChangeOrderStatusUseCase {
+    Order changeStatus(UUID requesterId, UUID orderId, OrderStatus newStatus);
+}
