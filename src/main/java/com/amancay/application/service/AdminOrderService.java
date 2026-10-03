@@ -11,25 +11,29 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.amancay.application.port.in.ListAllOrdersQuery;
 import com.amancay.application.port.out.BuyerEmailPort;
+import com.amancay.application.port.out.OrderRepositoryPort;
 import com.amancay.domain.model.Order;
-import com.amancay.domain.port.OrderRepositoryPort;
 
 // Separado de OrderService porque no pasa por el chequeo de permisos por usuario:
-// la autorizacion (solo ADMIN) la hace el controller.
+// lista las ordenes de todos y solo lo puede pedir un ADMIN.
 @Service
 public class AdminOrderService implements ListAllOrdersQuery {
 
     private final OrderRepositoryPort orderRepository;
     private final BuyerEmailPort buyerEmailPort;
+    private final AdminGuard adminGuard;
 
-    public AdminOrderService(OrderRepositoryPort orderRepository, BuyerEmailPort buyerEmailPort) {
+    public AdminOrderService(OrderRepositoryPort orderRepository, BuyerEmailPort buyerEmailPort,
+            AdminGuard adminGuard) {
         this.orderRepository = orderRepository;
         this.buyerEmailPort = buyerEmailPort;
+        this.adminGuard = adminGuard;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AdminOrder> listAll() {
+    public List<AdminOrder> listAll(UUID requesterId) {
+        adminGuard.requireAdmin(requesterId);
         List<Order> orders = orderRepository.findAllNewestFirst();
         Set<UUID> buyerIds = orders.stream().map(Order::getUserId).collect(Collectors.toSet());
         Map<UUID, String> emailsByUserId = buyerEmailPort.findEmailsByUserId(buyerIds);

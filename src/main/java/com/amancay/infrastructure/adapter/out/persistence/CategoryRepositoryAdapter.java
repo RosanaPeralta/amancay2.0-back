@@ -6,8 +6,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import com.amancay.application.port.out.CategoryRepositoryPort;
 import com.amancay.domain.model.Category;
-import com.amancay.domain.port.CategoryRepositoryPort;
 import com.amancay.infrastructure.adapter.out.persistence.entity.CategoryJpaEntity;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.CategoryPersistenceMapper;
 import com.amancay.infrastructure.adapter.out.persistence.repository.SpringDataCategoryRepository;

@@ -21,6 +21,7 @@ import com.amancay.application.port.out.BuyerEmailPort;
 import com.amancay.application.port.out.PayableOrderPort.PayableOrder;
 import com.amancay.application.port.out.PayableOrderPort;
 import com.amancay.application.port.out.PaymentProcessorPort;
+import com.amancay.application.port.out.PaymentRepositoryPort;
 import com.amancay.application.port.out.StockPort;
 import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.PaymentNotFoundException;
@@ -28,7 +29,6 @@ import com.amancay.domain.model.Payment;
 import com.amancay.domain.model.PaymentDetails;
 import com.amancay.domain.model.PaymentResult;
 import com.amancay.domain.model.PaymentStatus;
-import com.amancay.domain.port.PaymentRepositoryPort;
 
 @Service
 public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase, ConfirmPaymentUseCase,
@@ -39,15 +39,17 @@ public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase
     private final PaymentProcessorPort paymentProcessorPort;
     private final StockPort stockPort;
     private final BuyerEmailPort buyerEmailPort;
+    private final AdminGuard adminGuard;
 
     public PaymentService(PaymentRepositoryPort paymentRepository,
             PayableOrderPort payableOrderPort, PaymentProcessorPort paymentProcessorPort, StockPort stockPort,
-            BuyerEmailPort buyerEmailPort) {
+            BuyerEmailPort buyerEmailPort, AdminGuard adminGuard) {
         this.paymentRepository = paymentRepository;
         this.payableOrderPort = payableOrderPort;
         this.paymentProcessorPort = paymentProcessorPort;
         this.stockPort = stockPort;
         this.buyerEmailPort = buyerEmailPort;
+        this.adminGuard = adminGuard;
     }
 
     @Override
@@ -77,11 +79,11 @@ public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase
     }
 
     // Unico lugar que muestra pagos de todos los usuarios (nunca solo los propios, a
-    // diferencia del resto de este servicio). Solo llega aca via AdminPaymentController,
-    // que ya exige ADMIN.
+    // diferencia del resto de este servicio), por eso exige ADMIN.
     @Override
     @Transactional(readOnly = true)
-    public List<PendingPayment> listPending() {
+    public List<PendingPayment> listPending(UUID requesterId) {
+        adminGuard.requireAdmin(requesterId);
         List<Payment> pending = paymentRepository.findByStatus(PaymentStatus.PENDIENTE);
         Set<UUID> orderIds = pending.stream().map(Payment::getOrderId).collect(Collectors.toSet());
         Map<UUID, PayableOrder> ordersById = payableOrderPort.loadAll(orderIds).stream()
@@ -96,7 +98,8 @@ public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase
 
     @Override
     @Transactional
-    public Payment confirm(UUID paymentId, PaymentStatus decision) {
+    public Payment confirm(UUID requesterId, UUID paymentId, PaymentStatus decision) {
+        adminGuard.requireAdmin(requesterId);
         Payment.requireFinalDecision(decision);
         Payment payment = findPayment(paymentId);
         payment.confirm(decision);

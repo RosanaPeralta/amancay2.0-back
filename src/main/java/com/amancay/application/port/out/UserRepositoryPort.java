@@ -1,4 +1,4 @@
-package com.amancay.domain.port;
+package com.amancay.application.port.out;
 
 import java.util.Collection;
 import java.util.List;

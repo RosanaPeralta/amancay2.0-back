@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
+import com.amancay.application.port.out.ProductRepositoryPort;
 import com.amancay.domain.exception.ProductNotFoundException;
 import com.amancay.domain.model.PageQuery;
 import com.amancay.domain.model.PageResult;
@@ -15,7 +16,6 @@ import com.amancay.domain.model.Product;
 import com.amancay.domain.model.ProductFilter;
 import com.amancay.domain.model.ProductSort;
 import com.amancay.domain.model.ProductSummary;
-import com.amancay.domain.port.ProductRepositoryPort;
 import com.amancay.infrastructure.adapter.out.persistence.entity.ProductJpaEntity;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.PageMapper;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.ProductPersistenceMapper;

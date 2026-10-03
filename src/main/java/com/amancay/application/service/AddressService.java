@@ -12,12 +12,12 @@ import com.amancay.application.port.in.DeleteAddressUseCase;
 import com.amancay.application.port.in.ListAddressesQuery;
 import com.amancay.application.port.in.SetDefaultAddressUseCase;
 import com.amancay.application.port.in.UpdateAddressUseCase;
+import com.amancay.application.port.out.AddressRepositoryPort;
+import com.amancay.application.port.out.UserRepositoryPort;
 import com.amancay.domain.exception.AddressLimitReachedException;
 import com.amancay.domain.exception.AddressNotFoundException;
 import com.amancay.domain.exception.UserNotFoundException;
 import com.amancay.domain.model.Address;
-import com.amancay.domain.port.AddressRepositoryPort;
-import com.amancay.domain.port.UserRepositoryPort;
 
 @Service
 public class AddressService implements ListAddressesQuery, CreateAddressUseCase, UpdateAddressUseCase,

@@ -10,6 +10,7 @@ import com.amancay.application.port.in.ChangeUserRoleUseCase;
 import com.amancay.application.port.in.GetOrProvisionUserUseCase;
 import com.amancay.application.port.in.ListUsersQuery;
 import com.amancay.application.port.in.UpdateProfileUseCase;
+import com.amancay.application.port.out.UserRepositoryPort;
 import com.amancay.domain.exception.InactiveUserException;
 import com.amancay.domain.exception.SelfRoleChangeException;
 import com.amancay.domain.exception.UserNotFoundException;
@@ -17,16 +18,17 @@ import com.amancay.domain.model.PageQuery;
 import com.amancay.domain.model.PageResult;
 import com.amancay.domain.model.Role;
 import com.amancay.domain.model.User;
-import com.amancay.domain.port.UserRepositoryPort;
 
 @Service
 public class UserService implements GetOrProvisionUserUseCase, UpdateProfileUseCase, ListUsersQuery,
         ChangeUserRoleUseCase {
 
     private final UserRepositoryPort userRepository;
+    private final AdminGuard adminGuard;
 
-    public UserService(UserRepositoryPort userRepository) {
+    public UserService(UserRepositoryPort userRepository, AdminGuard adminGuard) {
         this.userRepository = userRepository;
+        this.adminGuard = adminGuard;
     }
 
     @Override
@@ -54,7 +56,8 @@ public class UserService implements GetOrProvisionUserUseCase, UpdateProfileUseC
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<User> list(String text, PageQuery page) {
+    public PageResult<User> list(UUID requesterId, String text, PageQuery page) {
+        adminGuard.requireAdmin(requesterId);
         return text == null || text.isBlank() ? userRepository.findAll(page)
                 : userRepository.search(text.trim(), page);
     }
@@ -62,6 +65,7 @@ public class UserService implements GetOrProvisionUserUseCase, UpdateProfileUseC
     @Override
     @Transactional
     public User changeRole(UUID adminId, UUID targetId, Role role) {
+        adminGuard.requireAdmin(adminId);
         if (adminId.equals(targetId) && role != Role.ADMIN) {
             throw new SelfRoleChangeException();
         }

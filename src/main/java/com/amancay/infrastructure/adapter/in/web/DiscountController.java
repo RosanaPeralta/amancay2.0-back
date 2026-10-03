@@ -4,6 +4,8 @@ import java.net.URI;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +23,7 @@ import com.amancay.application.port.in.ListDiscountsQuery;
 import com.amancay.application.port.in.UpdateDiscountUseCase;
 import com.amancay.infrastructure.adapter.in.web.dto.DiscountRequest;
 import com.amancay.infrastructure.adapter.in.web.dto.DiscountResponse;
+import com.amancay.infrastructure.security.LoggedUser;
 
 import jakarta.validation.Valid;
 
@@ -59,22 +62,27 @@ public class DiscountController {
                 .toList());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<DiscountResponse> create(@Valid @RequestBody DiscountRequest request) {
+    public ResponseEntity<DiscountResponse> create(@AuthenticationPrincipal LoggedUser loggedUser,
+            @Valid @RequestBody DiscountRequest request) {
         DiscountResponse created = DiscountResponse.from(
-                createDiscountUseCase.create(request.percentage(), request.description()));
+                createDiscountUseCase.create(loggedUser.id(), request.percentage(), request.description()));
         return ResponseEntity.created(URI.create("/api/discounts/" + created.id())).body(created);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    public ResponseEntity<DiscountResponse> update(@PathVariable Long id, @Valid @RequestBody DiscountRequest request) {
+    public ResponseEntity<DiscountResponse> update(@AuthenticationPrincipal LoggedUser loggedUser,
+            @PathVariable Long id, @Valid @RequestBody DiscountRequest request) {
         return ResponseEntity.ok(DiscountResponse.from(
-                updateDiscountUseCase.update(id, request.percentage(), request.description())));
+                updateDiscountUseCase.update(loggedUser.id(), id, request.percentage(), request.description())));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        deleteDiscountUseCase.delete(id);
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal LoggedUser loggedUser, @PathVariable Long id) {
+        deleteDiscountUseCase.delete(loggedUser.id(), id);
         return ResponseEntity.noContent().build();
     }
 }

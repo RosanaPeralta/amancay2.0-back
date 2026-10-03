@@ -1,5 +1,6 @@
 package com.amancay.application.service;
 
+import static com.amancay.application.service.fake.Admins.ADMIN_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import com.amancay.application.port.in.CreateProductCommand;
 import com.amancay.application.port.in.UpdateProductCommand;
+import com.amancay.application.service.fake.Admins;
 import com.amancay.application.service.fake.InMemoryDiscountRepository;
 import com.amancay.application.service.fake.InMemoryProductRepository;
 import com.amancay.domain.exception.ProductNotFoundException;
@@ -32,12 +34,13 @@ class ProductServiceTest {
 
     @BeforeEach
     void setUp() {
-        productService = new ProductService(products, discounts, new DiscountService(discounts, products));
+        productService = new ProductService(products, discounts, new DiscountService(discounts, products, Admins.guard()),
+                Admins.guard());
     }
 
     @Test
     void createsProductWithVariantsAndGeneratesSlugFromName() {
-        Product result = productService.create(create("Coffee",
+        Product result = productService.create(ADMIN_ID, create("Coffee",
                 List.of(new Product.NewVariant(new BigDecimal("10.50"), 4))));
 
         assertThat(result.getName()).isEqualTo("Coffee");
@@ -50,33 +53,33 @@ class ProductServiceTest {
 
     @Test
     void slugIgnoresAccentsAndSymbols() {
-        assertThat(productService.create(create("Café ¡Orgánico!", null)).getSlug()).isEqualTo("cafe-organico");
+        assertThat(productService.create(ADMIN_ID, create("Café ¡Orgánico!", null)).getSlug()).isEqualTo("cafe-organico");
     }
 
     @Test
     void appendsSuffixWhenGeneratedSlugAlreadyExists() {
-        productService.create(create("Coffee", null));
+        productService.create(ADMIN_ID, create("Coffee", null));
 
-        assertThat(productService.create(create("Coffee", null)).getSlug()).isEqualTo("coffee-2");
-        assertThat(productService.create(create("Coffee", null)).getSlug()).isEqualTo("coffee-3");
+        assertThat(productService.create(ADMIN_ID, create("Coffee", null)).getSlug()).isEqualTo("coffee-2");
+        assertThat(productService.create(ADMIN_ID, create("Coffee", null)).getSlug()).isEqualTo("coffee-3");
     }
 
     @Test
     void updateKeepsItsOwnSlugWithoutASuffix() {
-        Product coffee = productService.create(create("Coffee", null));
+        Product coffee = productService.create(ADMIN_ID, create("Coffee", null));
 
-        Product result = productService.update(coffee.getId(), update("Coffee", List.of()));
+        Product result = productService.update(ADMIN_ID, coffee.getId(), update("Coffee", List.of()));
 
         assertThat(result.getSlug()).isEqualTo("coffee");
     }
 
     @Test
     void updateSyncsVariantsById() {
-        Product coffee = productService.create(create("Coffee", List.of(
+        Product coffee = productService.create(ADMIN_ID, create("Coffee", List.of(
                 new Product.NewVariant(new BigDecimal("10"), 1), new Product.NewVariant(new BigDecimal("20"), 2))));
         ProductVariant kept = coffee.getVariants().getFirst();
 
-        Product result = productService.update(coffee.getId(), update("Coffee", List.of(
+        Product result = productService.update(ADMIN_ID, coffee.getId(), update("Coffee", List.of(
                 new Product.VariantChange(kept.getId(), new BigDecimal("15"), 9),
                 new Product.VariantChange(null, new BigDecimal("30"), 3))));
 
@@ -86,9 +89,9 @@ class ProductServiceTest {
 
     @Test
     void updateRejectsAVariantOfAnotherProduct() {
-        Product coffee = productService.create(create("Coffee", null));
+        Product coffee = productService.create(ADMIN_ID, create("Coffee", null));
 
-        assertThatThrownBy(() -> productService.update(coffee.getId(), update("Coffee", List.of(
+        assertThatThrownBy(() -> productService.update(ADMIN_ID, coffee.getId(), update("Coffee", List.of(
                 new Product.VariantChange(UUID.randomUUID(), BigDecimal.ONE, 1)))))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("Variant does not belong to product");
@@ -96,7 +99,7 @@ class ProductServiceTest {
 
     @Test
     void returnsProductById() {
-        Product coffee = productService.create(create("Coffee", null));
+        Product coffee = productService.create(ADMIN_ID, create("Coffee", null));
 
         assertThat(productService.getById(coffee.getId()).getSlug()).isEqualTo("coffee");
     }
@@ -105,7 +108,7 @@ class ProductServiceTest {
     void unknownProductIsNotFound() {
         assertThatThrownBy(() -> productService.getById(UUID.randomUUID()))
                 .isInstanceOf(ProductNotFoundException.class);
-        assertThatThrownBy(() -> productService.delete(UUID.randomUUID()))
+        assertThatThrownBy(() -> productService.delete(ADMIN_ID, UUID.randomUUID()))
                 .isInstanceOf(ProductNotFoundException.class);
     }
 
@@ -126,9 +129,9 @@ class ProductServiceTest {
 
     @Test
     void deletesAProduct() {
-        Product coffee = productService.create(create("Coffee", null));
+        Product coffee = productService.create(ADMIN_ID, create("Coffee", null));
 
-        productService.delete(coffee.getId());
+        productService.delete(ADMIN_ID, coffee.getId());
 
         assertThat(products.existsById(coffee.getId())).isFalse();
     }

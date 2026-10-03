@@ -1,6 +1,8 @@
 package com.amancay.application.service;
 
+import static com.amancay.application.service.fake.Admins.ADMIN_ID;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Collection;
 import java.util.List;
@@ -11,10 +13,12 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import com.amancay.application.port.in.ListAllOrdersQuery.AdminOrder;
+import com.amancay.application.port.out.OrderRepositoryPort;
+import com.amancay.application.service.fake.Admins;
+import com.amancay.domain.exception.AdminRequiredException;
 import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderFixtures;
 import com.amancay.domain.model.OrderStatus;
-import com.amancay.domain.port.OrderRepositoryPort;
 
 class AdminOrderServiceTest {
 
@@ -26,13 +30,21 @@ class AdminOrderServiceTest {
         Order older = OrderFixtures.persisted(UUID.randomUUID(), beto, OrderStatus.DESPACHADO);
 
         AdminOrderService service = new AdminOrderService(ordersReturning(List.of(newest, older)),
-                userIds -> Map.of(ana, "ana@amancay.com"));
+                userIds -> Map.of(ana, "ana@amancay.com"), Admins.guard());
 
-        List<AdminOrder> result = service.listAll();
+        List<AdminOrder> result = service.listAll(ADMIN_ID);
 
         assertThat(result).extracting(adminOrder -> adminOrder.order().getId())
                 .containsExactly(newest.getId(), older.getId());
         assertThat(result).extracting(AdminOrder::buyerEmail).containsExactly("ana@amancay.com", null);
+    }
+
+    @Test
+    void buyerCannotListEveryonesOrders() {
+        AdminOrderService service = new AdminOrderService(ordersReturning(List.of()), userIds -> Map.of(),
+                Admins.guard());
+
+        assertThatThrownBy(() -> service.listAll(UUID.randomUUID())).isInstanceOf(AdminRequiredException.class);
     }
 
     private static OrderRepositoryPort ordersReturning(List<Order> orders) {

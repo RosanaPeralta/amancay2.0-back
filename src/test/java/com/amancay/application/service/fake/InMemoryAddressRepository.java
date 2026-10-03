@@ -9,8 +9,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.amancay.application.port.out.AddressRepositoryPort;
 import com.amancay.domain.model.Address;
-import com.amancay.domain.port.AddressRepositoryPort;
 
 public class InMemoryAddressRepository implements AddressRepositoryPort {
 

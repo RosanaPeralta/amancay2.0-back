@@ -6,11 +6,10 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
-import com.amancay.application.port.in.ChangeOrderStatusUseCase;
 import com.amancay.application.port.in.GetOrderQuery;
+import com.amancay.application.port.in.MarkOrderAsPaidUseCase;
 import com.amancay.application.port.out.PayableOrderPort;
 import com.amancay.domain.model.Order;
-import com.amancay.domain.model.OrderStatus;
 
 // Traduce entre las ordenes (sus puertos de entrada y su modelo) y lo que necesita
 // el cobro de pagos.
@@ -18,11 +17,11 @@ import com.amancay.domain.model.OrderStatus;
 class PayableOrderAdapter implements PayableOrderPort {
 
     private final GetOrderQuery getOrderQuery;
-    private final ChangeOrderStatusUseCase changeOrderStatusUseCase;
+    private final MarkOrderAsPaidUseCase markOrderAsPaidUseCase;
 
-    PayableOrderAdapter(GetOrderQuery getOrderQuery, ChangeOrderStatusUseCase changeOrderStatusUseCase) {
+    PayableOrderAdapter(GetOrderQuery getOrderQuery, MarkOrderAsPaidUseCase markOrderAsPaidUseCase) {
         this.getOrderQuery = getOrderQuery;
-        this.changeOrderStatusUseCase = changeOrderStatusUseCase;
+        this.markOrderAsPaidUseCase = markOrderAsPaidUseCase;
     }
 
     @Override
@@ -42,7 +41,7 @@ class PayableOrderAdapter implements PayableOrderPort {
 
     @Override
     public void markAsPaid(UUID orderId) {
-        changeOrderStatusUseCase.changeStatus(orderId, OrderStatus.EN_PREPARACION);
+        markOrderAsPaidUseCase.markAsPaid(orderId);
     }
 
     private PayableOrder toPayableOrder(Order order) {

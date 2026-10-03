@@ -10,13 +10,13 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.amancay.application.port.out.ReviewRepositoryPort;
 import com.amancay.domain.model.PageQuery;
 import com.amancay.domain.model.PageResult;
 import com.amancay.domain.model.RatingCount;
 import com.amancay.domain.model.Review;
 import com.amancay.domain.model.ReviewSort;
 import com.amancay.domain.model.ReviewStatus;
-import com.amancay.domain.port.ReviewRepositoryPort;
 
 public class InMemoryReviewRepository implements ReviewRepositoryPort {
 

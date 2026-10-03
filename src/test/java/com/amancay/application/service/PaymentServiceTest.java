@@ -1,5 +1,6 @@
 package com.amancay.application.service;
 
+import static com.amancay.application.service.fake.Admins.ADMIN_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -22,7 +23,10 @@ import com.amancay.application.port.in.ListPendingPaymentsQuery.PendingPayment;
 import com.amancay.application.port.in.PaymentOutcome;
 import com.amancay.application.port.out.PayableOrderPort.PayableOrder;
 import com.amancay.application.port.out.PayableOrderPort;
+import com.amancay.application.port.out.PaymentRepositoryPort;
 import com.amancay.application.port.out.StockPort;
+import com.amancay.application.service.fake.Admins;
+import com.amancay.domain.exception.AdminRequiredException;
 import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.OrderAccessDeniedException;
 import com.amancay.domain.exception.OrderNotFoundException;
@@ -32,7 +36,6 @@ import com.amancay.domain.model.PaymentDetails;
 import com.amancay.domain.model.PaymentMethod;
 import com.amancay.domain.model.PaymentResult;
 import com.amancay.domain.model.PaymentStatus;
-import com.amancay.domain.port.PaymentRepositoryPort;
 
 // Sin Mockito ni Spring: cada puerto de salida se reemplaza por un fake en memoria.
 class PaymentServiceTest {
@@ -60,7 +63,8 @@ class PaymentServiceTest {
                     Map<UUID, String> found = new HashMap<>();
                     userIds.stream().filter(emails::containsKey).forEach(id -> found.put(id, emails.get(id)));
                     return found;
-                });
+                },
+                Admins.guard());
     }
 
     @Test
@@ -176,7 +180,7 @@ class PaymentServiceTest {
         PayableOrder order = orders.add(UUID.randomUUID(), "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
-        Payment result = paymentService.confirm(pending.getId(), PaymentStatus.APROBADO);
+        Payment result = paymentService.confirm(ADMIN_ID, pending.getId(), PaymentStatus.APROBADO);
 
         assertThat(result.getStatus()).isEqualTo(PaymentStatus.APROBADO);
         assertThat(payments.findById(pending.getId()).orElseThrow().getStatus()).isEqualTo(PaymentStatus.APROBADO);
@@ -188,9 +192,21 @@ class PaymentServiceTest {
         PayableOrder order = orders.add(UUID.randomUUID(), "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
-        Payment result = paymentService.confirm(pending.getId(), PaymentStatus.RECHAZADO);
+        Payment result = paymentService.confirm(ADMIN_ID, pending.getId(), PaymentStatus.RECHAZADO);
 
         assertThat(result.getStatus()).isEqualTo(PaymentStatus.RECHAZADO);
+        assertThat(orders.paid).isEmpty();
+    }
+
+    @Test
+    void buyerCannotConfirmPaymentsNorListPendingOnes() {
+        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
+
+        assertThatThrownBy(() -> paymentService.confirm(REQUESTER_ID, pending.getId(), PaymentStatus.APROBADO))
+                .isInstanceOf(AdminRequiredException.class);
+        assertThatThrownBy(() -> paymentService.listPending(REQUESTER_ID)).isInstanceOf(AdminRequiredException.class);
+        assertThat(payments.findById(pending.getId()).orElseThrow().getStatus()).isEqualTo(PaymentStatus.PENDIENTE);
         assertThat(orders.paid).isEmpty();
     }
 
@@ -199,14 +215,14 @@ class PaymentServiceTest {
         PayableOrder order = orders.add(UUID.randomUUID(), "200");
         Payment approved = payments.put(order.id(), PaymentStatus.APROBADO, PaymentMethod.TRANSFERENCIA);
 
-        assertThatThrownBy(() -> paymentService.confirm(approved.getId(), PaymentStatus.APROBADO))
+        assertThatThrownBy(() -> paymentService.confirm(ADMIN_ID, approved.getId(), PaymentStatus.APROBADO))
                 .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void cannotConfirmWithPendienteAsTheDecisionEvenForAnUnknownPayment() {
         // Se valida la decision antes de buscar el pago: no es un 404 sino un 400.
-        assertThatThrownBy(() -> paymentService.confirm(UUID.randomUUID(), PaymentStatus.PENDIENTE))
+        assertThatThrownBy(() -> paymentService.confirm(ADMIN_ID, UUID.randomUUID(), PaymentStatus.PENDIENTE))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -239,7 +255,7 @@ class PaymentServiceTest {
         PayableOrder order = orders.add(UUID.randomUUID(), "200", new PayableOrder.Line(variantId, 1));
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
-        paymentService.confirm(pending.getId(), PaymentStatus.APROBADO);
+        paymentService.confirm(ADMIN_ID, pending.getId(), PaymentStatus.APROBADO);
 
         assertThat(stock.of(variantId)).isEqualTo(3);
     }
@@ -291,7 +307,7 @@ class PaymentServiceTest {
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
         payments.put(order.id(), PaymentStatus.RECHAZADO, PaymentMethod.TARJETA_CREDITO);
 
-        List<PendingPayment> result = paymentService.listPending();
+        List<PendingPayment> result = paymentService.listPending(ADMIN_ID);
 
         assertThat(result).singleElement().satisfies(item -> {
             assertThat(item.payment().getId()).isEqualTo(pending.getId());
@@ -302,7 +318,7 @@ class PaymentServiceTest {
 
     @Test
     void listPendingReturnsEmptyListWhenNothingIsPending() {
-        assertThat(paymentService.listPending()).isEmpty();
+        assertThat(paymentService.listPending(ADMIN_ID)).isEmpty();
     }
 
     private PaymentDetails card() {

@@ -5,8 +5,8 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 
+import com.amancay.application.port.out.DiscountRepositoryPort;
 import com.amancay.domain.model.Discount;
-import com.amancay.domain.port.DiscountRepositoryPort;
 import com.amancay.infrastructure.adapter.out.persistence.entity.DiscountJpaEntity;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.DiscountPersistenceMapper;
 import com.amancay.infrastructure.adapter.out.persistence.repository.SpringDataDiscountRepository;

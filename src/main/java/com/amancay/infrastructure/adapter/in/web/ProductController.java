@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,6 +32,7 @@ import com.amancay.infrastructure.adapter.in.web.dto.PageResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.ProductResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.ProductSummaryResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.UpdateProductRequest;
+import com.amancay.infrastructure.security.LoggedUser;
 
 import jakarta.validation.Valid;
 
@@ -74,42 +76,50 @@ public class ProductController {
         return ResponseEntity.ok(ProductResponse.from(getProductQuery.getById(id)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
-        ProductResponse product = ProductResponse.from(createProductUseCase.create(request.toCommand()));
+    public ResponseEntity<ProductResponse> create(@AuthenticationPrincipal LoggedUser loggedUser,
+            @Valid @RequestBody CreateProductRequest request) {
+        ProductResponse product = ProductResponse.from(createProductUseCase.create(loggedUser.id(), request.toCommand()));
         return ResponseEntity.created(URI.create("/api/products/" + product.id())).body(product);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    public ResponseEntity<ProductResponse> update(@PathVariable UUID id,
-            @Valid @RequestBody UpdateProductRequest request) {
-        return ResponseEntity.ok(ProductResponse.from(updateProductUseCase.update(id, request.toCommand())));
+    public ResponseEntity<ProductResponse> update(@AuthenticationPrincipal LoggedUser loggedUser,
+            @PathVariable UUID id, @Valid @RequestBody UpdateProductRequest request) {
+        return ResponseEntity.ok(ProductResponse.from(updateProductUseCase.update(loggedUser.id(), id,
+                request.toCommand())));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        deleteProductUseCase.delete(id);
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal LoggedUser loggedUser, @PathVariable UUID id) {
+        deleteProductUseCase.delete(loggedUser.id(), id);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{productId}/discounts")
-    public ResponseEntity<ProductResponse> createAndAssignDiscount(@PathVariable UUID productId,
-            @Valid @RequestBody DiscountRequest request) {
-        return ResponseEntity.ok(ProductResponse.from(manageProductDiscountUseCase.createAndAssignDiscount(productId,
-                request.percentage(), request.description())));
+    public ResponseEntity<ProductResponse> createAndAssignDiscount(@AuthenticationPrincipal LoggedUser loggedUser,
+            @PathVariable UUID productId, @Valid @RequestBody DiscountRequest request) {
+        return ResponseEntity.ok(ProductResponse.from(manageProductDiscountUseCase.createAndAssignDiscount(
+                loggedUser.id(), productId, request.percentage(), request.description())));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{productId}/discounts/{discountId}")
-    public ResponseEntity<ProductResponse> assignExistingDiscount(@PathVariable UUID productId,
-            @PathVariable Long discountId) {
-        return ResponseEntity.ok(ProductResponse.from(manageProductDiscountUseCase.assignDiscount(productId,
-                discountId)));
+    public ResponseEntity<ProductResponse> assignExistingDiscount(@AuthenticationPrincipal LoggedUser loggedUser,
+            @PathVariable UUID productId, @PathVariable Long discountId) {
+        return ResponseEntity.ok(ProductResponse.from(manageProductDiscountUseCase.assignDiscount(loggedUser.id(),
+                productId, discountId)));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{productId}/discounts")
-    public ResponseEntity<Void> removeDiscount(@PathVariable UUID productId) {
-        manageProductDiscountUseCase.removeDiscount(productId);
+    public ResponseEntity<Void> removeDiscount(@AuthenticationPrincipal LoggedUser loggedUser,
+            @PathVariable UUID productId) {
+        manageProductDiscountUseCase.removeDiscount(loggedUser.id(), productId);
         return ResponseEntity.noContent().build();
     }
 }

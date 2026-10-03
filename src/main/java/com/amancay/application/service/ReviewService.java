@@ -14,7 +14,10 @@ import com.amancay.application.port.in.ListReviewsQuery;
 import com.amancay.application.port.in.ModerateReviewsUseCase;
 import com.amancay.application.port.in.ReviewWithAuthor;
 import com.amancay.application.port.in.UpdateReviewUseCase;
+import com.amancay.application.port.out.ProductRepositoryPort;
 import com.amancay.application.port.out.PurchaseVerifierPort;
+import com.amancay.application.port.out.ReviewRepositoryPort;
+import com.amancay.application.port.out.UserRepositoryPort;
 import com.amancay.domain.exception.DuplicateReviewException;
 import com.amancay.domain.exception.ProductNotFoundException;
 import com.amancay.domain.exception.PurchaseRequiredException;
@@ -26,9 +29,6 @@ import com.amancay.domain.model.Review;
 import com.amancay.domain.model.ReviewSort;
 import com.amancay.domain.model.ReviewStatus;
 import com.amancay.domain.model.User;
-import com.amancay.domain.port.ProductRepositoryPort;
-import com.amancay.domain.port.ReviewRepositoryPort;
-import com.amancay.domain.port.UserRepositoryPort;
 
 @Service
 public class ReviewService implements CreateReviewUseCase, UpdateReviewUseCase, DeleteReviewUseCase, ListReviewsQuery,
@@ -38,13 +38,15 @@ public class ReviewService implements CreateReviewUseCase, UpdateReviewUseCase, 
     private final ProductRepositoryPort productRepository;
     private final UserRepositoryPort userRepository;
     private final PurchaseVerifierPort purchaseVerifier;
+    private final AdminGuard adminGuard;
 
     public ReviewService(ReviewRepositoryPort reviewRepository, ProductRepositoryPort productRepository,
-            UserRepositoryPort userRepository, PurchaseVerifierPort purchaseVerifier) {
+            UserRepositoryPort userRepository, PurchaseVerifierPort purchaseVerifier, AdminGuard adminGuard) {
         this.reviewRepository = reviewRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.purchaseVerifier = purchaseVerifier;
+        this.adminGuard = adminGuard;
     }
 
     @Override
@@ -99,13 +101,16 @@ public class ReviewService implements CreateReviewUseCase, UpdateReviewUseCase, 
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<ReviewWithAuthor> listForModeration(ReviewStatus status, UUID productId, PageQuery page) {
+    public PageResult<ReviewWithAuthor> listForModeration(UUID requesterId, ReviewStatus status, UUID productId,
+            PageQuery page) {
+        adminGuard.requireAdmin(requesterId);
         return withAuthors(reviewRepository.findForModeration(status, productId, page));
     }
 
     @Override
     @Transactional
-    public ReviewWithAuthor changeStatus(UUID reviewId, ReviewStatus status) {
+    public ReviewWithAuthor changeStatus(UUID requesterId, UUID reviewId, ReviewStatus status) {
+        adminGuard.requireAdmin(requesterId);
         Review review = findReview(reviewId);
         review.changeStatus(status);
         return withAuthor(reviewRepository.save(review));
@@ -113,7 +118,8 @@ public class ReviewService implements CreateReviewUseCase, UpdateReviewUseCase, 
 
     @Override
     @Transactional
-    public void deleteAsAdmin(UUID reviewId) {
+    public void deleteAsAdmin(UUID requesterId, UUID reviewId) {
+        adminGuard.requireAdmin(requesterId);
         reviewRepository.delete(findReview(reviewId));
     }
 

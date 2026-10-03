@@ -7,13 +7,13 @@ import java.util.UUID;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
+import com.amancay.application.port.out.ReviewRepositoryPort;
 import com.amancay.domain.model.PageQuery;
 import com.amancay.domain.model.PageResult;
 import com.amancay.domain.model.RatingCount;
 import com.amancay.domain.model.Review;
 import com.amancay.domain.model.ReviewSort;
 import com.amancay.domain.model.ReviewStatus;
-import com.amancay.domain.port.ReviewRepositoryPort;
 import com.amancay.infrastructure.adapter.out.persistence.entity.ReviewJpaEntity;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.PageMapper;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.ReviewPersistenceMapper;

@@ -6,11 +6,11 @@ import java.util.UUID;
 import com.amancay.domain.model.Product;
 
 public interface ManageProductDiscountUseCase {
-    Product assignDiscount(UUID productId, Long discountId);
+    Product assignDiscount(UUID requesterId, UUID productId, Long discountId);
 
     // Crea el descuento y se lo asigna en la misma transaccion: si el producto no existe,
     // tampoco queda creado el descuento.
-    Product createAndAssignDiscount(UUID productId, BigDecimal percentage, String description);
+    Product createAndAssignDiscount(UUID requesterId, UUID productId, BigDecimal percentage, String description);
 
-    Product removeDiscount(UUID productId);
+    Product removeDiscount(UUID requesterId, UUID productId);
 }

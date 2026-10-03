@@ -14,6 +14,8 @@ import com.amancay.application.port.in.AddFavoriteUseCase;
 import com.amancay.application.port.in.FavoriteProduct;
 import com.amancay.application.port.in.ListFavoritesQuery;
 import com.amancay.application.port.in.RemoveFavoriteUseCase;
+import com.amancay.application.port.out.FavoriteRepositoryPort;
+import com.amancay.application.port.out.ProductRepositoryPort;
 import com.amancay.domain.exception.DuplicateFavoriteException;
 import com.amancay.domain.exception.FavoriteNotFoundException;
 import com.amancay.domain.exception.ProductNotFoundException;
@@ -21,8 +23,6 @@ import com.amancay.domain.model.Favorite;
 import com.amancay.domain.model.PageQuery;
 import com.amancay.domain.model.PageResult;
 import com.amancay.domain.model.ProductSummary;
-import com.amancay.domain.port.FavoriteRepositoryPort;
-import com.amancay.domain.port.ProductRepositoryPort;
 
 @Service
 public class FavoriteService implements AddFavoriteUseCase, RemoveFavoriteUseCase, ListFavoritesQuery {

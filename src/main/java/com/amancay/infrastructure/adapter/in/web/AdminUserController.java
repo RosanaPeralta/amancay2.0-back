@@ -41,10 +41,11 @@ public class AdminUserController {
 
     @GetMapping
     public ResponseEntity<PageResponse<UserResponse>> list(
+            @AuthenticationPrincipal LoggedUser loggedUser,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(PageResponse.from(listUsersQuery.list(q, new PageQuery(page, size)), UserResponse::from));
+        return ResponseEntity.ok(PageResponse.from(listUsersQuery.list(loggedUser.id(), q, new PageQuery(page, size)), UserResponse::from));
     }
 
     @PatchMapping("/{id}/role")

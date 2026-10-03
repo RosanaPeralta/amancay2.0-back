@@ -6,8 +6,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import com.amancay.application.port.out.AddressRepositoryPort;
 import com.amancay.domain.model.Address;
-import com.amancay.domain.port.AddressRepositoryPort;
 import com.amancay.infrastructure.adapter.out.persistence.entity.AddressJpaEntity;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.AddressPersistenceMapper;
 import com.amancay.infrastructure.adapter.out.persistence.repository.SpringDataAddressRepository;

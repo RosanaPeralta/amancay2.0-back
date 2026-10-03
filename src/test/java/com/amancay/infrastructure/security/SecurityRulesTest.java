@@ -2,6 +2,7 @@ package com.amancay.infrastructure.security;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
@@ -29,15 +30,21 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.amancay.application.port.in.ChangeUserRoleUseCase;
+import com.amancay.application.port.in.CreateCategoryUseCase;
 import com.amancay.application.port.in.CreateReviewUseCase;
+import com.amancay.application.port.in.DeleteCategoryUseCase;
 import com.amancay.application.port.in.GetOrProvisionUserUseCase;
+import com.amancay.application.port.in.ListCategoriesQuery;
 import com.amancay.application.port.in.ListReviewsQuery;
 import com.amancay.application.port.in.ListUsersQuery;
+import com.amancay.application.port.in.UpdateCategoryUseCase;
 import com.amancay.application.port.in.UpdateProfileUseCase;
+import com.amancay.domain.model.Category;
 import com.amancay.domain.model.PageResult;
 import com.amancay.domain.model.Role;
 import com.amancay.domain.model.User;
 import com.amancay.infrastructure.adapter.in.web.AdminUserController;
+import com.amancay.infrastructure.adapter.in.web.CategoryController;
 import com.amancay.infrastructure.adapter.in.web.ProductReviewController;
 import com.amancay.infrastructure.adapter.in.web.UserController;
 import com.amancay.infrastructure.config.SecurityConfig;
@@ -46,7 +53,8 @@ import com.amancay.infrastructure.config.SecurityConfig;
  * Verifica las reglas de autorizacion de {@link SecurityConfig} de punta a punta con MockMvc:
  * que endpoints exigen token, que rol necesita el panel admin, el formato JSON de 401/403 y CORS.
  */
-@WebMvcTest(controllers = {UserController.class, AdminUserController.class, ProductReviewController.class},
+@WebMvcTest(controllers = {UserController.class, AdminUserController.class, ProductReviewController.class,
+        CategoryController.class},
         properties = {
                 "supabase.jwt.issuer=https://test.supabase.co/auth/v1",
                 "supabase.jwt.jwks-uri=https://test.supabase.co/auth/v1/.well-known/jwks.json"})
@@ -76,6 +84,18 @@ class SecurityRulesTest {
 
     @MockitoBean
     private CreateReviewUseCase createReview;
+
+    @MockitoBean
+    private ListCategoriesQuery listCategories;
+
+    @MockitoBean
+    private CreateCategoryUseCase createCategory;
+
+    @MockitoBean
+    private UpdateCategoryUseCase updateCategory;
+
+    @MockitoBean
+    private DeleteCategoryUseCase deleteCategory;
 
     @Test
     void meWithoutTokenIsUnauthorizedWithJsonBody() throws Exception {
@@ -111,7 +131,7 @@ class SecurityRulesTest {
     void adminUsersAsAdminIsOk() throws Exception {
         LoggedUser admin = loggedUser("admin@amancay.com");
         when(getOrProvisionUser.getOrProvision(admin.id(), admin.email(), admin.name())).thenReturn(userWithRole(admin, Role.ADMIN));
-        when(listUsers.list(isNull(), any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+        when(listUsers.list(eq(admin.id()), isNull(), any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
         mockMvc.perform(get("/api/admin/users").with(authentication(tokenFor(admin))))
                 .andExpect(status().isOk())
@@ -125,6 +145,48 @@ class SecurityRulesTest {
                         .content("{\"rating\":5,\"title\":\"Great\",\"comment\":\"Loved it\"}"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Authentication required"));
+    }
+
+    @Test
+    void listingCategoriesStaysPublic() throws Exception {
+        when(listCategories.listAll()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/categories"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void creatingACategoryWithoutTokenIsUnauthorized() throws Exception {
+        mockMvc.perform(post("/api/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Cafe\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Authentication required"));
+    }
+
+    @Test
+    void creatingACategoryAsBuyerIsForbidden() throws Exception {
+        LoggedUser buyer = loggedUser("buyer@amancay.com");
+        when(getOrProvisionUser.getOrProvision(buyer.id(), buyer.email(), buyer.name())).thenReturn(userWithRole(buyer, Role.BUYER));
+
+        mockMvc.perform(post("/api/categories").with(authentication(tokenFor(buyer)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Cafe\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("Access denied"));
+    }
+
+    @Test
+    void creatingACategoryAsAdminPassesTheRequesterToTheUseCase() throws Exception {
+        LoggedUser admin = loggedUser("admin@amancay.com");
+        when(getOrProvisionUser.getOrProvision(admin.id(), admin.email(), admin.name())).thenReturn(userWithRole(admin, Role.ADMIN));
+        when(createCategory.create(admin.id(), "Cafe")).thenReturn(new Category(UUID.randomUUID(), "Cafe"));
+
+        mockMvc.perform(post("/api/categories").with(authentication(tokenFor(admin)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Cafe\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Cafe"));
     }
 
     @Test

@@ -11,11 +11,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.amancay.application.port.out.UserRepositoryPort;
 import com.amancay.domain.model.PageQuery;
 import com.amancay.domain.model.PageResult;
 import com.amancay.domain.model.Role;
 import com.amancay.domain.model.User;
-import com.amancay.domain.port.UserRepositoryPort;
 
 public class InMemoryUserRepository implements UserRepositoryPort {
 

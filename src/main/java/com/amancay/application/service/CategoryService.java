@@ -10,19 +10,21 @@ import com.amancay.application.port.in.CreateCategoryUseCase;
 import com.amancay.application.port.in.DeleteCategoryUseCase;
 import com.amancay.application.port.in.ListCategoriesQuery;
 import com.amancay.application.port.in.UpdateCategoryUseCase;
+import com.amancay.application.port.out.CategoryRepositoryPort;
 import com.amancay.domain.exception.CategoryNotFoundException;
 import com.amancay.domain.exception.DuplicateCategoryNameException;
 import com.amancay.domain.model.Category;
-import com.amancay.domain.port.CategoryRepositoryPort;
 
 @Service
 public class CategoryService
         implements ListCategoriesQuery, CreateCategoryUseCase, UpdateCategoryUseCase, DeleteCategoryUseCase {
 
     private final CategoryRepositoryPort categoryRepository;
+    private final AdminGuard adminGuard;
 
-    public CategoryService(CategoryRepositoryPort categoryRepository) {
+    public CategoryService(CategoryRepositoryPort categoryRepository, AdminGuard adminGuard) {
         this.categoryRepository = categoryRepository;
+        this.adminGuard = adminGuard;
     }
 
     @Override
@@ -33,7 +35,8 @@ public class CategoryService
 
     @Override
     @Transactional
-    public Category create(String name) {
+    public Category create(UUID requesterId, String name) {
+        adminGuard.requireAdmin(requesterId);
         if (categoryRepository.existsByName(name)) {
             throw new DuplicateCategoryNameException(name);
         }
@@ -42,7 +45,8 @@ public class CategoryService
 
     @Override
     @Transactional
-    public Category rename(UUID id, String name) {
+    public Category rename(UUID requesterId, UUID id, String name) {
+        adminGuard.requireAdmin(requesterId);
         Category category = findCategory(id);
         if (categoryRepository.existsByNameAndIdNot(name, id)) {
             throw new DuplicateCategoryNameException(name);
@@ -53,7 +57,8 @@ public class CategoryService
 
     @Override
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID requesterId, UUID id) {
+        adminGuard.requireAdmin(requesterId);
         findCategory(id);
         categoryRepository.deleteById(id);
     }

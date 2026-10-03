@@ -10,5 +10,5 @@ import com.amancay.domain.model.OrderStatus;
 // (payment, cuando un pago queda aprobado) o, mas adelante, un consumer de la
 // cola de mensajes. La validacion de la transicion vive en OrderStatus (State).
 public interface ChangeOrderStatusUseCase {
-    Order changeStatus(UUID orderId, OrderStatus newStatus);
+    Order changeStatus(UUID requesterId, UUID orderId, OrderStatus newStatus);
 }

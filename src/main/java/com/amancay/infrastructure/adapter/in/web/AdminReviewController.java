@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,7 @@ import com.amancay.domain.model.ReviewStatus;
 import com.amancay.infrastructure.adapter.in.web.dto.PageResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.ReviewResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.UpdateReviewStatusRequest;
+import com.amancay.infrastructure.security.LoggedUser;
 
 import jakarta.validation.Valid;
 
@@ -41,25 +43,28 @@ public class AdminReviewController {
 
     @GetMapping
     public ResponseEntity<PageResponse<ReviewResponse>> list(
+            @AuthenticationPrincipal LoggedUser loggedUser,
             @RequestParam(required = false) ReviewStatus status,
             @RequestParam(required = false) UUID productId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(PageResponse.from(
-                moderateReviewsUseCase.listForModeration(status, productId, new PageQuery(page, size)),
+                moderateReviewsUseCase.listForModeration(loggedUser.id(), status, productId, new PageQuery(page, size)),
                 ReviewResponse::from));
     }
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<ReviewResponse> changeStatus(
+            @AuthenticationPrincipal LoggedUser loggedUser,
             @PathVariable UUID id,
             @Valid @RequestBody UpdateReviewStatusRequest request) {
-        return ResponseEntity.ok(ReviewResponse.from(moderateReviewsUseCase.changeStatus(id, request.status())));
+        return ResponseEntity.ok(ReviewResponse.from(moderateReviewsUseCase.changeStatus(loggedUser.id(), id,
+                request.status())));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        moderateReviewsUseCase.deleteAsAdmin(id);
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal LoggedUser loggedUser, @PathVariable UUID id) {
+        moderateReviewsUseCase.deleteAsAdmin(loggedUser.id(), id);
         return ResponseEntity.noContent().build();
     }
 }

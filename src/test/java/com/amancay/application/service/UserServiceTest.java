@@ -1,5 +1,6 @@
 package com.amancay.application.service;
 
+import static com.amancay.application.service.fake.Admins.ADMIN_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -8,6 +9,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.amancay.application.service.fake.Admins;
 import com.amancay.application.service.fake.InMemoryUserRepository;
 import com.amancay.domain.exception.InactiveUserException;
 import com.amancay.domain.exception.SelfRoleChangeException;
@@ -26,7 +28,7 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(users);
+        userService = new UserService(users, Admins.guard());
     }
 
     @Test
@@ -54,7 +56,7 @@ class UserServiceTest {
             }
         };
 
-        assertThat(new UserService(racing).getOrProvision(id, "buyer@amancay.com", "Ada").getRole())
+        assertThat(new UserService(racing, Admins.guard()).getOrProvision(id, "buyer@amancay.com", "Ada").getRole())
                 .isEqualTo(Role.ADMIN);
         assertThat(racing.count("save")).isZero();
     }
@@ -135,7 +137,7 @@ class UserServiceTest {
         UUID id = UUID.randomUUID();
         users.add(id, "a@amancay.com", "Ada", Role.BUYER, true);
 
-        PageResult<User> result = userService.list("  ", PAGE);
+        PageResult<User> result = userService.list(ADMIN_ID, "  ", PAGE);
 
         assertThat(result.content()).extracting(User::getId).containsExactly(id);
         assertThat(users.count("search")).isZero();
@@ -147,7 +149,7 @@ class UserServiceTest {
         users.add(UUID.randomUUID(), "b@amancay.com", "Adalberto", Role.BUYER, true);
         users.add(UUID.randomUUID(), "c@amancay.com", "Carla", Role.BUYER, true);
 
-        PageResult<User> result = userService.list(" ada ", PAGE);
+        PageResult<User> result = userService.list(ADMIN_ID, " ada ", PAGE);
 
         assertThat(result.totalElements()).isEqualTo(2L);
         assertThat(result.content()).extracting(User::getName).containsExactly("Adalberto", "Ada");
@@ -158,13 +160,13 @@ class UserServiceTest {
         UUID targetId = UUID.randomUUID();
         users.add(targetId, "b@amancay.com", "Bob", Role.BUYER, true);
 
-        assertThat(userService.changeRole(UUID.randomUUID(), targetId, Role.ADMIN).getRole()).isEqualTo(Role.ADMIN);
+        assertThat(userService.changeRole(ADMIN_ID, targetId, Role.ADMIN).getRole()).isEqualTo(Role.ADMIN);
         assertThat(users.stored(targetId).getRole()).isEqualTo(Role.ADMIN);
     }
 
     @Test
     void adminCannotRemoveTheirOwnAdminRole() {
-        UUID adminId = UUID.randomUUID();
+        UUID adminId = ADMIN_ID;
         users.add(adminId, "a@amancay.com", "Ada", Role.ADMIN, true);
 
         assertThatThrownBy(() -> userService.changeRole(adminId, adminId, Role.BUYER))
@@ -174,7 +176,7 @@ class UserServiceTest {
 
     @Test
     void changingRoleOfUnknownUserIsNotFound() {
-        assertThatThrownBy(() -> userService.changeRole(UUID.randomUUID(), UUID.randomUUID(), Role.ADMIN))
+        assertThatThrownBy(() -> userService.changeRole(ADMIN_ID, UUID.randomUUID(), Role.ADMIN))
                 .isInstanceOf(UserNotFoundException.class);
     }
 }

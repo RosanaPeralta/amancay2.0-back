@@ -21,8 +21,10 @@ import com.amancay.application.port.in.CreateOrderCommand;
 import com.amancay.application.port.out.LoadProductVariantPort;
 import com.amancay.application.port.out.LoadRequesterPort;
 import com.amancay.application.port.out.LoadShippingAddressPort;
+import com.amancay.application.port.out.OrderRepositoryPort;
 import com.amancay.application.port.out.PublishOrderEventPort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
+import com.amancay.domain.exception.AdminRequiredException;
 import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
 import com.amancay.domain.exception.OrderAccessDeniedException;
@@ -33,7 +35,6 @@ import com.amancay.domain.model.OrderFixtures;
 import com.amancay.domain.model.OrderStatus;
 import com.amancay.domain.model.OrderStatusChange;
 import com.amancay.domain.model.ShippingAddress;
-import com.amancay.domain.port.OrderRepositoryPort;
 
 // Sin Mockito ni Spring: cada puerto de salida se reemplaza por un fake en memoria.
 class OrderServiceTest {
@@ -53,7 +54,8 @@ class OrderServiceTest {
         LoadRequesterPort requesterPort = id -> Optional.ofNullable(users.get(id))
                 .orElseThrow(() -> new UserNotFoundException(id));
         PublishOrderEventPort eventPort = publishedEvents::add;
-        orderService = new OrderService(orders, variantPort, addressPort, requesterPort, eventPort);
+        orderService = new OrderService(orders, variantPort, addressPort, requesterPort, eventPort,
+                new AdminGuard(requesterPort));
     }
 
     @Test
@@ -166,7 +168,7 @@ class OrderServiceTest {
         UUID orderId = UUID.randomUUID();
         orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
 
-        Order result = orderService.changeStatus(orderId, OrderStatus.EN_PREPARACION);
+        Order result = orderService.changeStatus(admin(), orderId, OrderStatus.EN_PREPARACION);
 
         assertThat(result.getStatus()).isEqualTo(OrderStatus.EN_PREPARACION);
         assertThat(orders.findById(orderId).orElseThrow().getStatusHistory())
@@ -180,10 +182,33 @@ class OrderServiceTest {
         UUID orderId = UUID.randomUUID();
         orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
 
-        assertThatThrownBy(() -> orderService.changeStatus(orderId, OrderStatus.ENTREGADO))
+        assertThatThrownBy(() -> orderService.changeStatus(admin(), orderId, OrderStatus.ENTREGADO))
                 .isInstanceOf(InvalidOrderStatusTransitionException.class);
         assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.CREADO);
         assertThat(publishedEvents).isEmpty();
+    }
+
+    @Test
+    void buyerCannotChangeTheStatus() {
+        UUID orderId = UUID.randomUUID();
+        orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
+
+        assertThatThrownBy(() -> orderService.changeStatus(buyer(), orderId, OrderStatus.EN_PREPARACION))
+                .isInstanceOf(AdminRequiredException.class);
+        assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.CREADO);
+        assertThat(publishedEvents).isEmpty();
+    }
+
+    @Test
+    void markAsPaidMovesTheOrderWithoutAnAdmin() {
+        UUID orderId = UUID.randomUUID();
+        orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
+
+        orderService.markAsPaid(orderId);
+
+        assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.EN_PREPARACION);
+        assertThat(publishedEvents).containsExactly(
+                new OrderStatusChangedEvent(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION));
     }
 
     private UUID buyer() {

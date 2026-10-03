@@ -1,5 +1,6 @@
 package com.amancay.application.service;
 
+import static com.amancay.application.service.fake.Admins.ADMIN_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.amancay.application.port.in.ReviewWithAuthor;
+import com.amancay.application.service.fake.Admins;
 import com.amancay.application.service.fake.InMemoryProductRepository;
 import com.amancay.application.service.fake.InMemoryReviewRepository;
 import com.amancay.application.service.fake.InMemoryUserRepository;
@@ -40,7 +42,8 @@ class ReviewServiceTest {
 
     @BeforeEach
     void setUp() {
-        reviewService = new ReviewService(reviews, products, users, (userId, product) -> purchased);
+        reviewService = new ReviewService(reviews, products, users, (userId, product) -> purchased,
+                Admins.guard());
         productId = products.add("Carpa", "carpa", true, Set.of()).getId();
         users.add(USER_ID, "ada@amancay.com", "Ada", Role.BUYER, true);
         users.add(OTHER_USER_ID, "x@amancay.com", null, Role.BUYER, true);
@@ -149,7 +152,7 @@ class ReviewServiceTest {
     void summaryCountsOnlyPublishedReviews() {
         reviewService.create(USER_ID, productId, 5, null, null);
         UUID hidden = reviewService.create(OTHER_USER_ID, productId, 1, null, null).review().getId();
-        reviewService.changeStatus(hidden, ReviewStatus.HIDDEN);
+        reviewService.changeStatus(ADMIN_ID, hidden, ReviewStatus.HIDDEN);
 
         RatingSummary result = reviewService.ratingSummary(productId);
 
@@ -167,7 +170,7 @@ class ReviewServiceTest {
     void listsOnlyPublishedReviewsOfAProduct() {
         UUID published = reviewService.create(USER_ID, productId, 5, null, null).review().getId();
         UUID hidden = reviewService.create(OTHER_USER_ID, productId, 2, null, null).review().getId();
-        reviewService.changeStatus(hidden, ReviewStatus.HIDDEN);
+        reviewService.changeStatus(ADMIN_ID, hidden, ReviewStatus.HIDDEN);
 
         PageResult<ReviewWithAuthor> result = reviewService.listByProduct(productId, ReviewSort.RECENT, PAGE);
 
@@ -203,7 +206,7 @@ class ReviewServiceTest {
     @Test
     void listsOwnReviewsIncludingHiddenOnes() {
         UUID id = reviewService.create(USER_ID, productId, 1, null, null).review().getId();
-        reviewService.changeStatus(id, ReviewStatus.HIDDEN);
+        reviewService.changeStatus(ADMIN_ID, id, ReviewStatus.HIDDEN);
 
         PageResult<ReviewWithAuthor> result = reviewService.listByUser(USER_ID, PAGE);
 
@@ -215,21 +218,21 @@ class ReviewServiceTest {
     void listsReviewsForModerationWithOptionalFilters() {
         reviewService.create(USER_ID, productId, 3, null, null);
         UUID hidden = reviewService.create(OTHER_USER_ID, productId, 1, null, null).review().getId();
-        reviewService.changeStatus(hidden, ReviewStatus.HIDDEN);
+        reviewService.changeStatus(ADMIN_ID, hidden, ReviewStatus.HIDDEN);
 
-        assertThat(reviewService.listForModeration(null, null, PAGE).totalElements()).isEqualTo(2L);
-        assertThat(reviewService.listForModeration(ReviewStatus.HIDDEN, productId, PAGE).totalElements())
+        assertThat(reviewService.listForModeration(ADMIN_ID, null, null, PAGE).totalElements()).isEqualTo(2L);
+        assertThat(reviewService.listForModeration(ADMIN_ID, ReviewStatus.HIDDEN, productId, PAGE).totalElements())
                 .isEqualTo(1L);
-        assertThat(reviewService.listForModeration(null, UUID.randomUUID(), PAGE).totalElements()).isZero();
+        assertThat(reviewService.listForModeration(ADMIN_ID, null, UUID.randomUUID(), PAGE).totalElements()).isZero();
     }
 
     @Test
     void hidesAndRepublishesAReview() {
         UUID id = reviewService.create(OTHER_USER_ID, productId, 3, null, null).review().getId();
 
-        assertThat(reviewService.changeStatus(id, ReviewStatus.HIDDEN).review().getStatus())
+        assertThat(reviewService.changeStatus(ADMIN_ID, id, ReviewStatus.HIDDEN).review().getStatus())
                 .isEqualTo(ReviewStatus.HIDDEN);
-        assertThat(reviewService.changeStatus(id, ReviewStatus.PUBLISHED).review().getStatus())
+        assertThat(reviewService.changeStatus(ADMIN_ID, id, ReviewStatus.PUBLISHED).review().getStatus())
                 .isEqualTo(ReviewStatus.PUBLISHED);
     }
 
@@ -237,14 +240,14 @@ class ReviewServiceTest {
     void adminDeletesAnyReviewRegardlessOfAuthor() {
         UUID id = reviewService.create(OTHER_USER_ID, productId, 3, null, null).review().getId();
 
-        reviewService.deleteAsAdmin(id);
+        reviewService.deleteAsAdmin(ADMIN_ID, id);
 
         assertThat(reviews.stored(id)).isNull();
     }
 
     @Test
     void adminDeleteOfUnknownReviewIsNotFound() {
-        assertThatThrownBy(() -> reviewService.deleteAsAdmin(UUID.randomUUID()))
+        assertThatThrownBy(() -> reviewService.deleteAsAdmin(ADMIN_ID, UUID.randomUUID()))
                 .isInstanceOf(ReviewNotFoundException.class);
     }
 }

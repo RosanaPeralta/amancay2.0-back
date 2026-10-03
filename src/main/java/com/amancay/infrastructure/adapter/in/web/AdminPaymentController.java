@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -18,6 +19,7 @@ import com.amancay.application.port.in.ListPendingPaymentsQuery;
 import com.amancay.infrastructure.adapter.in.web.dto.ConfirmPaymentRequest;
 import com.amancay.infrastructure.adapter.in.web.dto.PaymentResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.PendingPaymentResponse;
+import com.amancay.infrastructure.security.LoggedUser;
 
 import jakarta.validation.Valid;
 
@@ -42,15 +44,17 @@ public class AdminPaymentController {
     }
 
     @GetMapping("/pending")
-    public ResponseEntity<List<PendingPaymentResponse>> listPending() {
-        return ResponseEntity.ok(listPendingPaymentsQuery.listPending().stream()
+    public ResponseEntity<List<PendingPaymentResponse>> listPending(@AuthenticationPrincipal LoggedUser loggedUser) {
+        return ResponseEntity.ok(listPendingPaymentsQuery.listPending(loggedUser.id()).stream()
                 .map(PendingPaymentResponse::from)
                 .toList());
     }
 
     @PatchMapping("/{paymentId}/confirm")
-    public ResponseEntity<PaymentResponse> confirm(@PathVariable UUID paymentId,
+    public ResponseEntity<PaymentResponse> confirm(@AuthenticationPrincipal LoggedUser loggedUser,
+            @PathVariable UUID paymentId,
             @Valid @RequestBody ConfirmPaymentRequest request) {
-        return ResponseEntity.ok(PaymentResponse.from(confirmPaymentUseCase.confirm(paymentId, request.status())));
+        return ResponseEntity.ok(PaymentResponse.from(confirmPaymentUseCase.confirm(loggedUser.id(), paymentId,
+                request.status())));
     }
 }

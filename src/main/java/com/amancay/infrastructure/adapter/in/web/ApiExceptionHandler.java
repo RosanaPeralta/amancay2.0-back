@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.amancay.domain.exception.AddressLimitReachedException;
 import com.amancay.domain.exception.AddressNotFoundException;
+import com.amancay.domain.exception.AdminRequiredException;
 import com.amancay.domain.exception.CategoryNotFoundException;
 import com.amancay.domain.exception.DiscountNotFoundException;
 import com.amancay.domain.exception.DuplicateCategoryNameException;
@@ -102,9 +103,10 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied"));
     }
 
-    // Misma respuesta que AccessDeniedException: el front no distingue de donde vino el rechazo.
-    @ExceptionHandler(OrderAccessDeniedException.class)
-    public ResponseEntity<Map<String, String>> handleOrderAccessDenied(OrderAccessDeniedException exception) {
+    // Misma respuesta que AccessDeniedException: el front no distingue de donde vino el rechazo
+    // (el @PreAuthorize del controller o el chequeo del caso de uso).
+    @ExceptionHandler({OrderAccessDeniedException.class, AdminRequiredException.class})
+    public ResponseEntity<Map<String, String>> handleDomainAccessDenied(RuntimeException exception) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied"));
     }
 

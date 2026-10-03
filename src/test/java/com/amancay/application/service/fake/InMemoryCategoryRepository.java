@@ -6,8 +6,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.amancay.application.port.out.CategoryRepositoryPort;
 import com.amancay.domain.model.Category;
-import com.amancay.domain.port.CategoryRepositoryPort;
 
 public class InMemoryCategoryRepository implements CategoryRepositoryPort {
 

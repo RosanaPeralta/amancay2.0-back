@@ -6,10 +6,10 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import com.amancay.application.port.out.FavoriteRepositoryPort;
 import com.amancay.domain.model.Favorite;
 import com.amancay.domain.model.PageQuery;
 import com.amancay.domain.model.PageResult;
-import com.amancay.domain.port.FavoriteRepositoryPort;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.FavoritePersistenceMapper;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.PageMapper;
 import com.amancay.infrastructure.adapter.out.persistence.repository.SpringDataFavoriteRepository;

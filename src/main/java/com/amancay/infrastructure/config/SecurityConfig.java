@@ -117,10 +117,17 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // Requieren usuario autenticado: el perfil y sus recursos (/api/me/**), el panel de
-                // administracion (/api/admin/**, que ademas exige ROLE_ADMIN via @PreAuthorize en
-                // cada controller) y la escritura de resenias. El resto queda publico.
+                // administracion (/api/admin/**), la escritura del catalogo (productos, categorias y
+                // descuentos) y la de resenias. Lo de administracion y catalogo ademas exige ROLE_ADMIN
+                // via @PreAuthorize y otra vez en el caso de uso. El resto queda publico.
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/me/**", "/api/admin/**", "/api/orders/**", "/api/payments/**")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/products/**", "/api/categories/**", "/api/discounts/**")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**", "/api/categories/**", "/api/discounts/**")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**", "/api/categories/**", "/api/discounts/**")
                         .authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/products/*/reviews").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/reviews/**").authenticated()

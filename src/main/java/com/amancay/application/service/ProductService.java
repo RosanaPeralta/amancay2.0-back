@@ -15,6 +15,8 @@ import com.amancay.application.port.in.ListProductsQuery;
 import com.amancay.application.port.in.ManageProductDiscountUseCase;
 import com.amancay.application.port.in.UpdateProductCommand;
 import com.amancay.application.port.in.UpdateProductUseCase;
+import com.amancay.application.port.out.DiscountRepositoryPort;
+import com.amancay.application.port.out.ProductRepositoryPort;
 import com.amancay.domain.exception.DiscountNotFoundException;
 import com.amancay.domain.exception.ProductNotFoundException;
 import com.amancay.domain.model.Discount;
@@ -25,8 +27,6 @@ import com.amancay.domain.model.ProductFilter;
 import com.amancay.domain.model.ProductSort;
 import com.amancay.domain.model.ProductSummary;
 import com.amancay.domain.model.Slug;
-import com.amancay.domain.port.DiscountRepositoryPort;
-import com.amancay.domain.port.ProductRepositoryPort;
 
 @Service
 public class ProductService implements ListProductsQuery, GetProductQuery, CreateProductUseCase, UpdateProductUseCase,
@@ -35,12 +35,14 @@ public class ProductService implements ListProductsQuery, GetProductQuery, Creat
     private final ProductRepositoryPort productRepository;
     private final DiscountRepositoryPort discountRepository;
     private final CreateDiscountUseCase createDiscountUseCase;
+    private final AdminGuard adminGuard;
 
     public ProductService(ProductRepositoryPort productRepository, DiscountRepositoryPort discountRepository,
-            CreateDiscountUseCase createDiscountUseCase) {
+            CreateDiscountUseCase createDiscountUseCase, AdminGuard adminGuard) {
         this.productRepository = productRepository;
         this.discountRepository = discountRepository;
         this.createDiscountUseCase = createDiscountUseCase;
+        this.adminGuard = adminGuard;
     }
 
     @Override
@@ -57,7 +59,8 @@ public class ProductService implements ListProductsQuery, GetProductQuery, Creat
 
     @Override
     @Transactional
-    public Product create(CreateProductCommand command) {
+    public Product create(UUID requesterId, CreateProductCommand command) {
+        adminGuard.requireAdmin(requesterId);
         Product product = Product.create(command.name(), generateUniqueSlug(command.name(), null),
                 command.shortDescription(), command.description(), command.active(), command.variants(),
                 command.imageUrls(), command.categoryIds());
@@ -69,7 +72,8 @@ public class ProductService implements ListProductsQuery, GetProductQuery, Creat
 
     @Override
     @Transactional
-    public Product update(UUID id, UpdateProductCommand command) {
+    public Product update(UUID requesterId, UUID id, UpdateProductCommand command) {
+        adminGuard.requireAdmin(requesterId);
         Product product = findProduct(id);
         product.updateDetails(command.name(), generateUniqueSlug(command.name(), id), command.shortDescription(),
                 command.description(), command.active(), command.categoryIds());
@@ -83,31 +87,39 @@ public class ProductService implements ListProductsQuery, GetProductQuery, Creat
 
     @Override
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID requesterId, UUID id) {
+        adminGuard.requireAdmin(requesterId);
         findProduct(id);
         productRepository.deleteById(id);
     }
 
     @Override
     @Transactional
-    public Product assignDiscount(UUID productId, Long discountId) {
+    public Product assignDiscount(UUID requesterId, UUID productId, Long discountId) {
+        adminGuard.requireAdmin(requesterId);
+        return assign(productId, discountId);
+    }
+
+    @Override
+    @Transactional
+    public Product createAndAssignDiscount(UUID requesterId, UUID productId, BigDecimal percentage,
+            String description) {
+        Discount discount = createDiscountUseCase.create(requesterId, percentage, description);
+        return assign(productId, discount.getId());
+    }
+
+    @Override
+    @Transactional
+    public Product removeDiscount(UUID requesterId, UUID productId) {
+        adminGuard.requireAdmin(requesterId);
         Product product = findProduct(productId);
-        product.assignDiscount(findDiscount(discountId));
+        product.removeDiscount();
         return productRepository.save(product);
     }
 
-    @Override
-    @Transactional
-    public Product createAndAssignDiscount(UUID productId, BigDecimal percentage, String description) {
-        Discount discount = createDiscountUseCase.create(percentage, description);
-        return assignDiscount(productId, discount.getId());
-    }
-
-    @Override
-    @Transactional
-    public Product removeDiscount(UUID productId) {
+    private Product assign(UUID productId, Long discountId) {
         Product product = findProduct(productId);
-        product.removeDiscount();
+        product.assignDiscount(findDiscount(discountId));
         return productRepository.save(product);
     }
 

@@ -9,10 +9,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.amancay.application.port.out.FavoriteRepositoryPort;
 import com.amancay.domain.model.Favorite;
 import com.amancay.domain.model.PageQuery;
 import com.amancay.domain.model.PageResult;
-import com.amancay.domain.port.FavoriteRepositoryPort;
 
 public class InMemoryFavoriteRepository implements FavoriteRepositoryPort {
 

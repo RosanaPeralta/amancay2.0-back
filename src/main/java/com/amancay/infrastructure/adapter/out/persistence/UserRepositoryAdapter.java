@@ -7,11 +7,11 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import com.amancay.application.port.out.UserRepositoryPort;
 import com.amancay.domain.exception.UserNotFoundException;
 import com.amancay.domain.model.PageQuery;
 import com.amancay.domain.model.PageResult;
 import com.amancay.domain.model.User;
-import com.amancay.domain.port.UserRepositoryPort;
 import com.amancay.infrastructure.adapter.out.persistence.entity.UserJpaEntity;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.PageMapper;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.UserPersistenceMapper;

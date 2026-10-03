@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import com.amancay.application.port.out.ProductRepositoryPort;
 import com.amancay.domain.model.PageQuery;
 import com.amancay.domain.model.PageResult;
 import com.amancay.domain.model.Product;
@@ -20,7 +21,6 @@ import com.amancay.domain.model.ProductImage;
 import com.amancay.domain.model.ProductSort;
 import com.amancay.domain.model.ProductSummary;
 import com.amancay.domain.model.ProductVariant;
-import com.amancay.domain.port.ProductRepositoryPort;
 
 // Imita a la base: asigna ids a producto, variantes e imagenes y timestamps crecientes.
 public class InMemoryProductRepository implements ProductRepositoryPort {

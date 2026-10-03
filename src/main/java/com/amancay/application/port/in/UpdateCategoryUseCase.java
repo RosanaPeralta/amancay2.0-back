@@ -5,5 +5,5 @@ import java.util.UUID;
 import com.amancay.domain.model.Category;
 
 public interface UpdateCategoryUseCase {
-    Category rename(UUID id, String name);
+    Category rename(UUID requesterId, UUID id, String name);
 }

@@ -13,11 +13,13 @@ import com.amancay.application.port.in.CreateOrderCommand;
 import com.amancay.application.port.in.CreateOrderUseCase;
 import com.amancay.application.port.in.GetOrderQuery;
 import com.amancay.application.port.in.ListOrdersQuery;
+import com.amancay.application.port.in.MarkOrderAsPaidUseCase;
 import com.amancay.application.port.out.LoadProductVariantPort.ProductVariantInfo;
 import com.amancay.application.port.out.LoadProductVariantPort;
 import com.amancay.application.port.out.LoadRequesterPort.Requester;
 import com.amancay.application.port.out.LoadRequesterPort;
 import com.amancay.application.port.out.LoadShippingAddressPort;
+import com.amancay.application.port.out.OrderRepositoryPort;
 import com.amancay.application.port.out.PublishOrderEventPort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
 import com.amancay.domain.exception.InsufficientStockException;
@@ -27,25 +29,27 @@ import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderItem;
 import com.amancay.domain.model.OrderStatus;
 import com.amancay.domain.model.ShippingAddress;
-import com.amancay.domain.port.OrderRepositoryPort;
 
 @Service
-public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCase, GetOrderQuery, ListOrdersQuery {
+public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCase, MarkOrderAsPaidUseCase, GetOrderQuery,
+        ListOrdersQuery {
 
     private final OrderRepositoryPort orderRepository;
     private final LoadProductVariantPort loadProductVariantPort;
     private final LoadShippingAddressPort loadShippingAddressPort;
     private final LoadRequesterPort loadRequesterPort;
     private final PublishOrderEventPort publishOrderEventPort;
+    private final AdminGuard adminGuard;
 
     public OrderService(OrderRepositoryPort orderRepository,
             LoadProductVariantPort loadProductVariantPort, LoadShippingAddressPort loadShippingAddressPort,
-            LoadRequesterPort loadRequesterPort, PublishOrderEventPort publishOrderEventPort) {
+            LoadRequesterPort loadRequesterPort, PublishOrderEventPort publishOrderEventPort, AdminGuard adminGuard) {
         this.orderRepository = orderRepository;
         this.loadProductVariantPort = loadProductVariantPort;
         this.loadShippingAddressPort = loadShippingAddressPort;
         this.loadRequesterPort = loadRequesterPort;
         this.publishOrderEventPort = publishOrderEventPort;
+        this.adminGuard = adminGuard;
     }
 
     @Override
@@ -105,7 +109,18 @@ public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCas
 
     @Override
     @Transactional
-    public Order changeStatus(UUID orderId, OrderStatus newStatus) {
+    public Order changeStatus(UUID requesterId, UUID orderId, OrderStatus newStatus) {
+        adminGuard.requireAdmin(requesterId);
+        return applyStatus(orderId, newStatus);
+    }
+
+    @Override
+    @Transactional
+    public void markAsPaid(UUID orderId) {
+        applyStatus(orderId, OrderStatus.EN_PREPARACION);
+    }
+
+    private Order applyStatus(UUID orderId, OrderStatus newStatus) {
         Order order = findOrder(orderId);
         OrderStatus previousStatus = order.getStatus();
         order.changeStatus(newStatus);

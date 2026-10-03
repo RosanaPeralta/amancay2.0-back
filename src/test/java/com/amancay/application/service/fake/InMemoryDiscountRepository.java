@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.amancay.application.port.out.DiscountRepositoryPort;
 import com.amancay.domain.model.Discount;
-import com.amancay.domain.port.DiscountRepositoryPort;
 
 public class InMemoryDiscountRepository implements DiscountRepositoryPort {
 
