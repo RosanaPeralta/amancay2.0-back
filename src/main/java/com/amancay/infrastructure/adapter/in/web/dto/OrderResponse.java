@@ -10,7 +10,6 @@ import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderItemProduct;
 import com.amancay.domain.model.OrderStatus;
 
-// Mismos campos que el antiguo OrderDto: el JSON que recibe el front no cambia.
 public record OrderResponse(
         UUID id,
         UUID userId,

@@ -7,7 +7,6 @@ import java.util.UUID;
 import com.amancay.application.port.in.ListPendingPaymentsQuery.PendingPayment;
 import com.amancay.domain.model.PaymentMethod;
 
-// Mismos campos que el antiguo AdminPendingPaymentDto.
 public record PendingPaymentResponse(
         UUID paymentId,
         UUID orderId,

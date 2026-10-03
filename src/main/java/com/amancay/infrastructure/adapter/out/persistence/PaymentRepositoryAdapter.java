@@ -45,8 +45,7 @@ class PaymentRepositoryAdapter implements PaymentRepositoryPort {
         return repository.existsByOrderIdAndStatus(orderId, status);
     }
 
-    // Igual que en ordenes: dentro de la transaccion el findById devuelve la entidad ya
-    // cargada, y saveAndFlush para que la respuesta traiga id y timestamps.
+    // saveAndFlush para que la respuesta ya traiga id y timestamps.
     @Override
     public Payment save(Payment payment) {
         PaymentJpaEntity entity;

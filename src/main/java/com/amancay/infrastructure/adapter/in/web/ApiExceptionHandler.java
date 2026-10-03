@@ -96,8 +96,6 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied"));
     }
 
-    // InactiveUserException ya no extiende AccessDeniedException (el dominio no depende de Spring
-    // Security); se mantiene la misma respuesta que antes.
     @ExceptionHandler(InactiveUserException.class)
     public ResponseEntity<Map<String, String>> handleInactiveUser(InactiveUserException exception) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied"));

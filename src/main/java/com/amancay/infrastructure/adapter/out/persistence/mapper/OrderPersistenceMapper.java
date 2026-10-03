@@ -48,9 +48,7 @@ public class OrderPersistenceMapper {
         return entity;
     }
 
-    // Una orden existente solo cambia de estado (los items y la direccion quedan fijos
-    // al crearla), asi que alcanza con copiar el estado y agregar las entradas nuevas
-    // del historial, que son las que todavia no tienen id.
+    // Una orden existente solo cambia de estado y suma entradas nuevas (sin id) al historial.
     public void applyChanges(Order order, OrderJpaEntity entity) {
         entity.setStatus(order.getStatus());
         appendNewStatusHistory(order, entity);

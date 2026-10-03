@@ -43,10 +43,7 @@ public class ProductPersistenceMapper {
                 entity.getCreatedAt(), entity.getUpdatedAt());
     }
 
-    // Copia el producto sobre la entidad (nueva o ya cargada). Las variantes e imagenes se
-    // sincronizan por id: las que el dominio ya no tiene se borran (orphanRemoval), las que
-    // tienen id se actualizan y las que vienen sin id se agregan. El descuento lo resuelve
-    // el adaptador, porque necesita la referencia a la entidad.
+    // Variantes e imagenes se sincronizan por id; el descuento lo resuelve el adaptador.
     public void copyToEntity(Product product, ProductJpaEntity entity) {
         entity.setName(product.getName());
         entity.setSlug(product.getSlug());

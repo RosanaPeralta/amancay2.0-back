@@ -11,10 +11,7 @@ import com.amancay.infrastructure.adapter.out.persistence.entity.ReviewJpaEntity
 
 import jakarta.persistence.criteria.Predicate;
 
-/**
- * Filtros opcionales del listado de moderación. Cada filtro en {@code null} se omite,
- * así que agregar un tercero es una línea más y no el doble de ramas.
- */
+/** Filtros opcionales del listado de moderación. Cada filtro en {@code null} se omite. */
 public final class ReviewSpecifications {
 
     private ReviewSpecifications() {

@@ -7,12 +7,6 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Protege las invariantes de {@link Address#create}: los cuatro campos obligatorios del PDF de
- * requerimientos (calle, altura, localidad, país) y los largos de columna. Igual que en
- * {@link ReviewTest}, la duplicación con Bean Validation es deliberada: el DTO cuida el borde HTTP,
- * la factory cuida el dominio.
- */
 class AddressTest {
 
     private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");

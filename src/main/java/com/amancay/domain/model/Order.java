@@ -8,9 +8,6 @@ import java.util.UUID;
 
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
 
-// Modelo de dominio puro: no sabe nada de JPA ni de Spring. Lo que es propio de
-// la base (ids generados, timestamps, el cast al enum nativo de Postgres) vive en
-// infrastructure/adapter/out/persistence y se traduce con OrderPersistenceMapper.
 public class Order {
 
     private final UUID id;
@@ -58,9 +55,7 @@ public class Order {
                 subtotal.add(shippingCost), null, null, items, List.of());
     }
 
-    // Valida la transicion contra el propio OrderStatus (patron State) y deja
-    // registro en el historial. No dispara nada asincrono: eso lo hace
-    // OrderService despues de persistir.
+    // Valida la transicion con OrderStatus y la registra en el historial.
     public void changeStatus(OrderStatus newStatus) {
         if (!status.canTransitionTo(newStatus)) {
             throw new InvalidOrderStatusTransitionException(status, newStatus);

@@ -82,9 +82,7 @@ public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCas
         return orderRepository.findAllById(orderIds);
     }
 
-    // No reserva stock: es solo un aviso temprano de "esto ya no esta disponible" con el
-    // valor que hay en este instante. El stock real se descuenta cuando un pago se aprueba
-    // (PaymentService), para no bloquear unidades por una orden que nunca se paga.
+    // Aviso temprano, no reserva: el stock se descuenta cuando se aprueba el pago.
     @Override
     @Transactional
     public Order create(CreateOrderCommand command) {

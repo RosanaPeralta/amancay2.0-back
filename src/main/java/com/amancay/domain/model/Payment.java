@@ -14,8 +14,7 @@ public class Payment {
     private final BigDecimal amount;
     private final PaymentMethod method;
     private PaymentStatus status;
-    // Solo se usa con TRANSFERENCIA: el comprador lo carga desde el detalle de la orden
-    // mientras el pago sigue PENDIENTE, y el admin lo usa para confirmar o rechazar.
+    // Solo para TRANSFERENCIA.
     private String transferReference;
     private final Instant createdAt;
     private final Instant updatedAt;

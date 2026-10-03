@@ -30,8 +30,6 @@ import jakarta.persistence.Table;
 import com.amancay.domain.model.OrderStatus;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.OrderPersistenceMapper;
 
-// Representacion de la tabla orders. Sin logica de negocio: las reglas viven en
-// el modelo de dominio Order, y OrderPersistenceMapper traduce entre ambos.
 @Entity
 @Table(name = "orders")
 @Getter

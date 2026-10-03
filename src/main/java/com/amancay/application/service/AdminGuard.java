@@ -7,9 +7,7 @@ import org.springframework.stereotype.Component;
 import com.amancay.application.port.out.LoadRequesterPort;
 import com.amancay.domain.exception.AdminRequiredException;
 
-// Segunda barrera para los casos de uso de administracion: el controller ya exige
-// @PreAuthorize("hasRole('ADMIN')"), pero el caso de uso lo vuelve a verificar para que
-// un adaptador de entrada nuevo que se olvide la anotacion no lo deje abierto.
+// Segunda barrera, ademas del @PreAuthorize del controller.
 @Component
 public class AdminGuard {
 

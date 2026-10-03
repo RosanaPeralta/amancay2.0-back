@@ -6,7 +6,6 @@ import java.util.UUID;
 
 import com.amancay.domain.model.Product;
 
-// Mismos campos que el antiguo ProductDto.
 public record ProductResponse(
         UUID id,
         String name,

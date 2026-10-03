@@ -45,9 +45,7 @@ class OrderRepositoryAdapter implements OrderRepositoryPort {
         return repository.findAllByOrderByCreatedAtDesc().stream().map(mapper::toDomain).toList();
     }
 
-    // Dentro de la misma transaccion, el findById devuelve la entidad que ya esta en
-    // el contexto de persistencia (la cargo el servicio antes), sin ir de nuevo a la base.
-    // saveAndFlush para que la respuesta ya traiga ids y timestamps asignados.
+    // saveAndFlush para que la respuesta ya traiga ids y timestamps.
     @Override
     public Order save(Order order) {
         OrderJpaEntity entity;

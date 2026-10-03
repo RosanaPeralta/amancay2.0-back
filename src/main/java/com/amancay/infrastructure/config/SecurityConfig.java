@@ -108,18 +108,13 @@ public class SecurityConfig {
                     BearerTokenAuthenticationFilter.class);
         }
 
-        // Corre despues de los dos filtros de autenticacion: el del dev-user se registra antes
-        // del de bearer-token, asi que lo que va despues de este ultimo ve al que haya autenticado.
+        // Despues de los filtros de autenticacion, para leer al usuario ya autenticado.
         http.addFilterAfter(new UserRoleAuthoritiesFilter(getOrProvisionUser), BearerTokenAuthenticationFilter.class);
 
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // Requieren usuario autenticado: el perfil y sus recursos (/api/me/**), el panel de
-                // administracion (/api/admin/**), la escritura del catalogo (productos, categorias y
-                // descuentos) y la de resenias. Lo de administracion y catalogo ademas exige ROLE_ADMIN
-                // via @PreAuthorize y otra vez en el caso de uso. El resto queda publico.
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/me/**", "/api/admin/**", "/api/orders/**", "/api/payments/**")
                         .authenticated()

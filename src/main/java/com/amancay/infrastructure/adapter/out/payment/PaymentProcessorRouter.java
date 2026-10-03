@@ -10,8 +10,7 @@ import com.amancay.domain.model.PaymentDetails;
 import com.amancay.domain.model.PaymentMethod;
 import com.amancay.domain.model.PaymentResult;
 
-// Implementa el puerto de cobro delegando en la estrategia de cada metodo. Sumar un
-// gateway real (MercadoPago, etc.) es agregar un PaymentProcessor y mapearlo aca.
+// Delega en la estrategia de cobro segun el metodo de pago.
 @Component
 class PaymentProcessorRouter implements PaymentProcessorPort {
 

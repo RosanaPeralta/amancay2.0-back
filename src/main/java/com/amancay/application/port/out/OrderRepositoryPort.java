@@ -7,9 +7,6 @@ import java.util.UUID;
 
 import com.amancay.domain.model.Order;
 
-// Puerto de salida para persistir ordenes. La implementacion (OrderRepositoryAdapter,
-// sobre Spring Data JPA) vive en infrastructure; el dominio y la aplicacion solo
-// conocen esta interfaz.
 public interface OrderRepositoryPort {
     Optional<Order> findById(UUID id);
 

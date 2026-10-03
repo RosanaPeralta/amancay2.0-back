@@ -9,7 +9,6 @@ import com.amancay.domain.model.Payment;
 import com.amancay.domain.model.PaymentMethod;
 import com.amancay.domain.model.PaymentStatus;
 
-// Mismos campos que el antiguo PaymentDto: el JSON que recibe el front no cambia.
 public record PaymentResponse(
         UUID id,
         UUID orderId,

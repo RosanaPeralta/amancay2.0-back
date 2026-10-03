@@ -49,10 +49,6 @@ import com.amancay.infrastructure.adapter.in.web.ProductReviewController;
 import com.amancay.infrastructure.adapter.in.web.UserController;
 import com.amancay.infrastructure.config.SecurityConfig;
 
-/**
- * Verifica las reglas de autorizacion de {@link SecurityConfig} de punta a punta con MockMvc:
- * que endpoints exigen token, que rol necesita el panel admin, el formato JSON de 401/403 y CORS.
- */
 @WebMvcTest(controllers = {UserController.class, AdminUserController.class, ProductReviewController.class,
         CategoryController.class},
         properties = {

@@ -7,7 +7,6 @@ import java.util.UUID;
 import com.amancay.domain.model.Payment;
 import com.amancay.domain.model.PaymentStatus;
 
-// Puerto de salida para persistir pagos; lo implementa PaymentRepositoryAdapter.
 public interface PaymentRepositoryPort {
     Optional<Payment> findById(UUID id);
 

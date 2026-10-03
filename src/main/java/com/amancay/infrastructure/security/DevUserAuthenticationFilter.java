@@ -12,17 +12,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-/**
- * Autentica cada solicitud como un usuario local fijo, de modo que los endpoints autenticados
- * puedan probarse sin un token de Supabase durante el desarrollo.
- *
- * <p>Este filtro solo se registra cuando {@code amancay.security.dev-user.enabled} es {@code true}.
- * Está deshabilitado de forma predeterminada y nunca debe habilitarse fuera del desarrollo local: mientras
- * esté activo, cada solicitante es tratado como el usuario configurado y no se requiere ningún token.
- *
- * <p>Una solicitud que ya incluye una autenticación se deja intacta, por lo que un token real sigue
- * teniendo prioridad cuando está presente.
- */
+/** Solo para desarrollo local: autentica cada request como un usuario fijo, sin token. */
 public class DevUserAuthenticationFilter extends OncePerRequestFilter {
 
     private final LoggedUser devUser;

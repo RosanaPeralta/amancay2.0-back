@@ -111,9 +111,6 @@ public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase
         return saved;
     }
 
-    // El comprador la carga desde el detalle de la orden mientras el pago de
-    // transferencia sigue PENDIENTE. No dispara nada mas: el stock recien se descuenta
-    // cuando el admin aprueba con confirm.
     @Override
     @Transactional
     public Payment attachTransferReference(UUID requesterId, UUID paymentId, String transferReference) {
@@ -133,11 +130,7 @@ public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase
         return new PaymentOutcome(saved, result.reason());
     }
 
-    // Unico punto donde se toca stock de verdad: se llama recien cuando un pago (tarjeta
-    // al toque, o transferencia via confirm) queda APROBADO, nunca al crear la orden. Si
-    // algo se agoto mientras tanto (por ejemplo, una transferencia tardo dias en
-    // confirmarse), esto tira InsufficientStockException y revierte toda la transaccion:
-    // el pago no queda guardado como aprobado sin el stock que respalda esa aprobacion.
+    // Unico lugar que descuenta stock, solo con el pago APROBADO. Si no alcanza, revierte la transaccion.
     private void fulfill(PayableOrder order) {
         for (PayableOrder.Line line : order.lines()) {
             if (!stockPort.decrement(line.productVariantId(), line.quantity())) {

@@ -7,21 +7,6 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Protege las invariantes de la factory estatica {@link Review#create}.
- *
- * <p>Que cubre: que una resenia recien creada nazca completa y valida. La factory es el unico
- * camino para construir una resenia nueva, asi que estas pruebas son las que garantizan que no
- * exista un {@code Review} a medio armar en ningun punto del programa.
- *
- * <p>Las validaciones de rango tambien viven en las anotaciones de Bean Validation del DTO, y ahi
- * devuelven 400 antes de llegar al dominio. La duplicacion es deliberada: el DTO protege el borde
- * HTTP, la factory protege el dominio de cualquier otro invocador (un job, una migracion, un
- * modulo futuro) que no pase por un controller.
- *
- * <p>Cuando se puede eliminar: solo si desaparece la factory. Mientras la construccion de resenias
- * tenga reglas, este es el lugar donde se verifican.
- */
 class ReviewTest {
 
     private static final UUID PRODUCT_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");

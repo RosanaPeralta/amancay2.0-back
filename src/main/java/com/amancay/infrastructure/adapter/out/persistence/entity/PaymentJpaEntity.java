@@ -23,8 +23,6 @@ import com.amancay.domain.model.PaymentMethod;
 import com.amancay.domain.model.PaymentStatus;
 import com.amancay.infrastructure.adapter.out.persistence.mapper.PaymentPersistenceMapper;
 
-// Representacion de la tabla payments. Sin logica de negocio: las reglas viven en el
-// modelo de dominio Payment, y PaymentPersistenceMapper traduce entre ambos.
 @Entity
 @Table(name = "payments")
 @Getter

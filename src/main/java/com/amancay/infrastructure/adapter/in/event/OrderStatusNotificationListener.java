@@ -7,9 +7,7 @@ import org.springframework.stereotype.Component;
 
 import com.amancay.domain.event.OrderStatusChangedEvent;
 
-// Placeholder del consumer async: hoy solo loguea. Cuando exista la cola de
-// mensajes real, este listener (o uno nuevo) pasa a publicar en el broker
-// (ej: evento "PedidoCreado" -> cola -> servicio de mail) en vez de loguear.
+// Placeholder: por ahora solo loguea.
 @Component
 public class OrderStatusNotificationListener {
     private static final Logger log = LoggerFactory.getLogger(OrderStatusNotificationListener.class);

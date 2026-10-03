@@ -23,11 +23,7 @@ import com.amancay.infrastructure.security.LoggedUser;
 
 import jakarta.validation.Valid;
 
-/**
- * El dueno de la tienda revisando que la plata de una transferencia realmente llego:
- * esta es la unica parte de la API que muestra pagos de todos los usuarios, no solo
- * los propios.
- */
+/** Revisión de pagos por transferencia. Solo ADMIN. */
 @RestController
 @RequestMapping("/api/admin/payments")
 @PreAuthorize("hasRole('ADMIN')")

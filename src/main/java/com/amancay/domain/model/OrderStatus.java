@@ -3,9 +3,7 @@ package com.amancay.domain.model;
 import java.util.EnumSet;
 import java.util.Set;
 
-// Patron State implementado como enum: cada constante sabe a que estados puede
-// pasar. Evita que un OrderService (o cualquier otro caller) fuerce una
-// transicion invalida como ENTREGADO -> CREADO.
+// Patron State: cada estado sabe a cuales puede pasar.
 public enum OrderStatus {
     CREADO {
         @Override

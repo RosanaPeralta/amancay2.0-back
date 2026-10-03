@@ -21,16 +21,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-/**
- * Agrega el rol almacenado en {@code users.role} a la autenticación actual como una
- * autoridad {@code ROLE_BUYER} / {@code ROLE_ADMIN}, de modo que cualquier endpoint pueda
- * protegerse con {@code @PreAuthorize("hasRole('ADMIN')")} sin modificar el código de seguridad.
- *
- * <p>El filtro debe registrarse después de que la autenticación haya ocurrido en la cadena: lee el
- * {@link LoggedUser} dejado por el filtro de token bearer (o por {@link DevUserAuthenticationFilter})
- * y reemplaza la autenticación por una equivalente que contenga el rol. Las solicitudes que no
- * están autenticadas se dejan intactas, por lo que los endpoints públicos nunca consultan la base de datos.
- */
+/** Agrega el rol de {@code users.role} como authority {@code ROLE_*}. Los requests sin autenticar no consultan la base. */
 public class UserRoleAuthoritiesFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(UserRoleAuthoritiesFilter.class);
 
