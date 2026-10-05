@@ -112,9 +112,6 @@ public class SecurityConfig {
                     BearerTokenAuthenticationFilter.class);
         }
 
-        // /internal/events/** lo llama el futuro servicio de cola, no un usuario con JWT de
-        // Supabase: se protege aparte, antes de que el resto de la cadena intente leer un
-        // Bearer token que nunca va a estar.
         http.addFilterBefore(new QueueWebhookAuthFilter(eventsWebhookApiKey), BearerTokenAuthenticationFilter.class);
 
         // Despues de los filtros de autenticacion, para leer al usuario ya autenticado.

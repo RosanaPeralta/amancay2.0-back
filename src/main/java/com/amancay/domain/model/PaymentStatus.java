@@ -3,9 +3,6 @@ package com.amancay.domain.model;
 import java.util.EnumSet;
 import java.util.Set;
 
-// Patron State, igual que OrderStatus: cada estado sabe a cuales puede pasar.
-// APROBADO y RECHAZADO son terminales; un reintento no transiciona la fila
-// rechazada, crea un Payment nuevo (ver Payment.ensureRetryable/attempt).
 public enum PaymentStatus {
     PENDIENTE {
         @Override

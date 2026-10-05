@@ -7,7 +7,6 @@ import com.amancay.domain.model.PaymentStatus;
 
 import jakarta.validation.constraints.NotNull;
 
-// Lo que el servicio de cola entrega en POST /internal/events/payment-status-changed.
 public record PaymentStatusChangedEventRequest(@NotNull UUID paymentId, @NotNull PaymentStatus previousStatus,
         @NotNull PaymentStatus newStatus) {
 

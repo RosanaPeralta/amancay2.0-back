@@ -24,9 +24,6 @@ import com.amancay.domain.model.Payment;
 import com.amancay.domain.model.PaymentMethod;
 import com.amancay.domain.model.PaymentStatus;
 
-// Sin Mockito ni Spring: cada puerto de salida se reemplaza por un fake en memoria. El
-// TransactionalEventListener en si no se ejercita aca (necesitaria una transaccion real);
-// lo que importa testear es la logica que dispara, no el mecanismo de Spring.
 class PaymentStatusNotificationListenerTest {
 
     private final Map<UUID, Payment> payments = new HashMap<>();
@@ -76,8 +73,6 @@ class PaymentStatusNotificationListenerTest {
         assertThat(sentMails).isEmpty();
     }
 
-    // Una excepcion aca (en vez de un no-op silencioso) es lo que permite que, el dia que
-    // esto lo dispare el webhook de la cola, el mensaje se mapee a 4xx y no se reintente.
     @Test
     void throwsWhenThePaymentNoLongerExists() {
         UUID paymentId = UUID.randomUUID();

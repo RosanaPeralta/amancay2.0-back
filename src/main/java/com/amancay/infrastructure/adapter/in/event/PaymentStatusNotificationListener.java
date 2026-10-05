@@ -20,9 +20,6 @@ import com.amancay.domain.exception.PaymentNotFoundException;
 import com.amancay.domain.model.Payment;
 import com.amancay.domain.model.PaymentStatus;
 
-// Mismo mecanismo que OrderStatusNotificationListener: AFTER_COMMIT para correr solo sobre
-// un pago ya persistido, y punto de enganche para el futuro consumer de la cola real con
-// reintentos.
 @Component
 public class PaymentStatusNotificationListener {
     private static final Logger log = LoggerFactory.getLogger(PaymentStatusNotificationListener.class);
@@ -52,11 +49,6 @@ public class PaymentStatusNotificationListener {
         }
     }
 
-    // Aprobado o no, el intento ya quedo resuelto por quien publico el evento: este metodo
-    // solo avisa, no vuelve a validar ni a reintentar el cobro. Tira excepcion (en vez de
-    // solo loguear) ante datos faltantes: via Spring, AFTER_COMMIT ya la loguea como error;
-    // via el webhook de la cola (EventDeliveryController), mapea a 4xx para que no se
-    // reintente un mensaje que nunca va a poder completarse.
     private void notifyPaymentRejected(UUID paymentId) {
         Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new PaymentNotFoundException(paymentId));
         PayableOrder order = payableOrderPort.load(payment.getOrderId());

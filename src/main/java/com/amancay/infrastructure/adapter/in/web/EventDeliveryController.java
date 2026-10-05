@@ -14,18 +14,6 @@ import com.amancay.infrastructure.adapter.in.web.dto.PaymentStatusChangedEventRe
 
 import jakarta.validation.Valid;
 
-/**
- * Donde el futuro servicio de cola (bigqueue) entrega los mensajes de "cambio de estado"
- * para que se procesen, con reintentos a su cargo. Protegido por {@code QueueWebhookAuthFilter}
- * (clave compartida, no Supabase JWT: quien llama es ese servicio, no un usuario).
- *
- * <p>Cada endpoint llama al mismo metodo que hoy dispara {@code @TransactionalEventListener}
- * en memoria, asi que el resultado es identico sin importar quien lo invoque: un 2xx significa
- * "mensaje procesado, no reintentar"; un 4xx (ver {@code ApiExceptionHandler}: dato no
- * encontrado, validacion) significa "este mensaje nunca va a poder completarse, no
- * reintentar"; cualquier otra falla cae en 5xx por default de Spring Boot, que es la senal de
- * "reintentar".
- */
 @RestController
 @RequestMapping("/internal/events")
 @Validated

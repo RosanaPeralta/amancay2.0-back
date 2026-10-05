@@ -29,9 +29,6 @@ import com.amancay.infrastructure.adapter.in.event.PaymentStatusNotificationList
 import com.amancay.infrastructure.config.SecurityConfig;
 import com.amancay.infrastructure.security.SupabaseJwtAuthenticationConverter;
 
-// Quien llama este endpoint es el futuro servicio de cola, no un usuario: se verifica la
-// clave compartida (QueueWebhookAuthFilter) y que las fallas de negocio mapeen a 4xx
-// (no reintentar) en vez de a 5xx (reintentar), via el mismo ApiExceptionHandler de siempre.
 @WebMvcTest(controllers = EventDeliveryController.class,
         properties = {
                 "supabase.jwt.issuer=https://test.supabase.co/auth/v1",

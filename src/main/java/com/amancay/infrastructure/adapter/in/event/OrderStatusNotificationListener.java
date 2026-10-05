@@ -22,11 +22,6 @@ import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderItemProduct;
 import com.amancay.domain.model.OrderStatus;
 
-// AFTER_COMMIT: corre recien cuando el cambio de estado ya quedo persistido (nunca antes,
-// nunca si la transaccion se revierte). Es el punto de enganche para el futuro consumer de
-// la cola real con reintentos: cuando exista, esta clase (u otra que llame a la misma logica)
-// pasa a ser lo que la cola invoca por cada mensaje, y una excepcion aca es la senal de
-// "reintentame esta entrega".
 @Component
 public class OrderStatusNotificationListener {
     private static final Logger log = LoggerFactory.getLogger(OrderStatusNotificationListener.class);
@@ -56,11 +51,6 @@ public class OrderStatusNotificationListener {
         }
     }
 
-    // El pago (tarjeta o transferencia) ya fue aprobado por quien publico el evento: este
-    // metodo solo avisa, no vuelve a validar nada. Tira excepcion (en vez de solo loguear)
-    // ante datos faltantes: via Spring, AFTER_COMMIT ya la loguea como error; via el webhook
-    // de la cola (EventDeliveryController), mapea a 4xx para que no se reintente un mensaje
-    // que nunca va a poder completarse.
     private void notifyPurchaseConfirmed(UUID orderId) {
         Order order = orderRepository.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
         String buyerEmail = buyerEmailPort.findEmailsByUserId(Set.of(order.getUserId())).get(order.getUserId());

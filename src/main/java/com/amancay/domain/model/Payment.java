@@ -57,10 +57,6 @@ public class Payment {
         }
     }
 
-    // El admin decide sobre una transferencia que quedo PENDIENTE. La transicion la valida
-    // el propio PaymentStatus (patron State), igual que Order.changeStatus(): PENDIENTE es
-    // el unico estado con next states, asi que esto ya cubre "solo se puede confirmar un
-    // pago pendiente" sin un chequeo aparte.
     public void confirm(PaymentStatus decision) {
         requireFinalDecision(decision);
         if (!status.canTransitionTo(decision)) {

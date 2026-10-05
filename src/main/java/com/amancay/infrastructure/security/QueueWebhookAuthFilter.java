@@ -11,13 +11,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-/**
- * Protege {@code /internal/events/**} con una clave compartida simple: quien llama es el
- * futuro servicio de cola, no un usuario con JWT de Supabase. Placeholder mientras no se
- * defina con ese servicio un mecanismo mas robusto (HMAC de la entrega, mTLS, etc.) — fail
- * closed: sin {@code amancay.events.webhook.api-key} configurada, rechaza todo en vez de
- * dejar el endpoint abierto.
- */
 public class QueueWebhookAuthFilter extends OncePerRequestFilter {
 
     private static final String HEADER = "X-Internal-Api-Key";
