@@ -1,19 +1,64 @@
 package com.amancay.infrastructure.adapter.in.event;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
+import com.amancay.application.port.in.DescribeOrderItemsQuery;
+import com.amancay.application.port.out.BuyerEmailPort;
+import com.amancay.application.port.out.MailSenderPort;
+import com.amancay.application.port.out.OrderRepositoryPort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
+import com.amancay.domain.exception.BuyerEmailNotFoundException;
+import com.amancay.domain.exception.OrderNotFoundException;
+import com.amancay.domain.model.Order;
+import com.amancay.domain.model.OrderItemProduct;
+import com.amancay.domain.model.OrderStatus;
 
-// Placeholder: por ahora solo loguea.
 @Component
 public class OrderStatusNotificationListener {
     private static final Logger log = LoggerFactory.getLogger(OrderStatusNotificationListener.class);
 
-    @EventListener
+    private final OrderRepositoryPort orderRepository;
+    private final DescribeOrderItemsQuery describeOrderItems;
+    private final BuyerEmailPort buyerEmailPort;
+    private final MailSenderPort mailSender;
+    private final PurchaseConfirmedMailContent mailContent;
+
+    public OrderStatusNotificationListener(OrderRepositoryPort orderRepository,
+            DescribeOrderItemsQuery describeOrderItems, BuyerEmailPort buyerEmailPort, MailSenderPort mailSender,
+            PurchaseConfirmedMailContent mailContent) {
+        this.orderRepository = orderRepository;
+        this.describeOrderItems = describeOrderItems;
+        this.buyerEmailPort = buyerEmailPort;
+        this.mailSender = mailSender;
+        this.mailContent = mailContent;
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrderStatusChanged(OrderStatusChangedEvent event) {
         log.info("Order {} changed status: {} -> {}", event.orderId(), event.previousStatus(), event.newStatus());
+
+        if (event.newStatus() == OrderStatus.EN_PREPARACION) {
+            notifyPurchaseConfirmed(event.orderId());
+        }
+    }
+
+    private void notifyPurchaseConfirmed(UUID orderId) {
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
+        String buyerEmail = buyerEmailPort.findEmailsByUserId(Set.of(order.getUserId())).get(order.getUserId());
+        if (buyerEmail == null) {
+            throw new BuyerEmailNotFoundException(order.getUserId());
+        }
+        Map<UUID, OrderItemProduct> products = describeOrderItems.describe(List.of(order));
+        MailContent content = mailContent.build(order, products);
+        mailSender.send(buyerEmail, content.subject(), content.body());
     }
 }
