@@ -105,11 +105,7 @@ public class PaymentService {
         }
 
         Payment payment = findPayment(paymentId);
-        if (payment.getStatus() != PaymentStatus.PENDIENTE) {
-            throw new IllegalStateException("Only a pending payment can be confirmed");
-        }
-
-        payment.setStatus(request.status());
+        payment.changeStatus(request.status());
         Payment saved = paymentRepository.saveAndFlush(payment);
 
         if (request.status() == PaymentStatus.APROBADO) {

@@ -31,6 +31,7 @@ import com.amancay.entity.PaymentMethod;
 import com.amancay.entity.PaymentStatus;
 import com.amancay.entity.User;
 import com.amancay.exceptions.InsufficientStockException;
+import com.amancay.exceptions.InvalidPaymentStatusTransitionException;
 import com.amancay.exceptions.OrderNotFoundException;
 import com.amancay.exceptions.PaymentNotFoundException;
 import com.amancay.entity.OrderItem;
@@ -244,7 +245,7 @@ class PaymentServiceTest {
 
         assertThatThrownBy(() -> paymentService.confirmPayment(PAYMENT_ID,
                 new ConfirmPaymentRequest(PaymentStatus.APROBADO)))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(InvalidPaymentStatusTransitionException.class);
     }
 
     @Test

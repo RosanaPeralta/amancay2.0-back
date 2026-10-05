@@ -22,6 +22,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import com.amancay.exceptions.InvalidPaymentStatusTransitionException;
+
 // Un Order puede tener varios Payment (uno por cada intento): asi se modela el
 // reintento de un pago fallido, sin necesidad de una entidad extra.
 @Entity
@@ -63,4 +65,15 @@ public class Payment {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    // Valida la transicion contra el propio PaymentStatus (patron State), igual que
+    // Order.changeStatus(). No la usa attemptPayment: ahi el status se resuelve una sola
+    // vez para una fila recien creada (nunca hubo un status previo persistido que
+    // "transicionar"), asi que se asigna directo.
+    public void changeStatus(PaymentStatus newStatus) {
+        if (!status.canTransitionTo(newStatus)) {
+            throw new InvalidPaymentStatusTransitionException(status, newStatus);
+        }
+        this.status = newStatus;
+    }
 }
