@@ -1,0 +1,32 @@
+package com.amancay.infrastructure.adapter.out.persistence.repository;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.data.jpa.domain.Specification;
+
+import com.amancay.domain.model.ReviewStatus;
+import com.amancay.infrastructure.adapter.out.persistence.entity.ReviewJpaEntity;
+
+import jakarta.persistence.criteria.Predicate;
+
+/** Filtros opcionales del listado de moderación. Cada filtro en {@code null} se omite. */
+public final class ReviewSpecifications {
+
+    private ReviewSpecifications() {
+    }
+
+    public static Specification<ReviewJpaEntity> matching(ReviewStatus status, UUID productId) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (productId != null) {
+                predicates.add(cb.equal(root.get("productId"), productId));
+            }
+            return cb.and(predicates.toArray(Predicate[]::new));
+        };
+    }
+}

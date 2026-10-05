@@ -1,0 +1,24 @@
+package com.amancay.infrastructure.adapter.in.web.dto;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+
+import com.amancay.application.port.in.ListPendingPaymentsQuery.PendingPayment;
+import com.amancay.domain.model.PaymentMethod;
+
+public record PendingPaymentResponse(
+        UUID paymentId,
+        UUID orderId,
+        BigDecimal amount,
+        PaymentMethod method,
+        String transferReference,
+        Instant createdAt,
+        String buyerEmail) {
+
+    public static PendingPaymentResponse from(PendingPayment pending) {
+        return new PendingPaymentResponse(pending.payment().getId(), pending.payment().getOrderId(),
+                pending.payment().getAmount(), pending.payment().getMethod(),
+                pending.payment().getTransferReference(), pending.payment().getCreatedAt(), pending.buyerEmail());
+    }
+}

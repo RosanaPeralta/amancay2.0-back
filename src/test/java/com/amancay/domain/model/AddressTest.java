@@ -1,0 +1,79 @@
+package com.amancay.domain.model;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+
+class AddressTest {
+
+    private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+
+    @Test
+    void createBuildsACompleteNonDefaultAddress() {
+        Address address = Address.create(USER_ID, "Av. Siempreviva", 742, "3 A", "Springfield", "Buenos Aires",
+                "Argentina", "1234");
+
+        assertThat(address.getId()).isNotNull();
+        assertThat(address.getUserId()).isEqualTo(USER_ID);
+        assertThat(address.getStreet()).isEqualTo("Av. Siempreviva");
+        assertThat(address.getNumber()).isEqualTo(742);
+        assertThat(address.getFloorApt()).isEqualTo("3 A");
+        assertThat(address.getCity()).isEqualTo("Springfield");
+        assertThat(address.getProvince()).isEqualTo("Buenos Aires");
+        assertThat(address.getCountry()).isEqualTo("Argentina");
+        assertThat(address.getPostalCode()).isEqualTo("1234");
+        assertThat(address.isDefaultAddress()).isFalse();
+    }
+
+    @Test
+    void createTrimsAndTurnsBlankOptionalsIntoNull() {
+        Address address = Address.create(USER_ID, "  Calle ", 1, null, "Ciudad", "", "País", null);
+
+        assertThat(address.getStreet()).isEqualTo("Calle");
+        assertThat(address.getFloorApt()).isNull();
+        assertThat(address.getProvince()).isNull();
+        assertThat(address.getPostalCode()).isNull();
+    }
+
+    @Test
+    void createRejectsMissingRequiredFields() {
+        assertThatThrownBy(() -> Address.create(USER_ID, " ", 1, null, "Ciudad", null, "País", null))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("street");
+        assertThatThrownBy(() -> Address.create(USER_ID, "Calle", null, null, "Ciudad", null, "País", null))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("number");
+        assertThatThrownBy(() -> Address.create(USER_ID, "Calle", 1, null, "", null, "País", null))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("city");
+        assertThatThrownBy(() -> Address.create(USER_ID, "Calle", 1, null, "Ciudad", null, null, null))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("country");
+    }
+
+    @Test
+    void createRejectsValuesLongerThanTheColumn() {
+        assertThatThrownBy(() -> Address.create(USER_ID, "x".repeat(256), 1, null, "Ciudad", null, "País", null))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("street");
+    }
+
+    @Test
+    void createRejectsAMissingUser() {
+        assertThatThrownBy(() -> Address.create(null, "Calle", 1, null, "Ciudad", null, "País", null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void updateRevalidatesAndKeepsIdentityAndDefaultFlag() {
+        Address address = Address.create(USER_ID, "Calle", 1, null, "Ciudad", null, "País", null);
+        UUID id = address.getId();
+        address.markDefault();
+
+        address.update("Otra", 2, "4 B", "Otra ciudad", "Otra prov", "Otro país", "9999");
+
+        assertThat(address.getId()).isEqualTo(id);
+        assertThat(address.getStreet()).isEqualTo("Otra");
+        assertThat(address.isDefaultAddress()).isTrue();
+        assertThatThrownBy(() -> address.update("", 2, null, "C", null, "P", null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+}
