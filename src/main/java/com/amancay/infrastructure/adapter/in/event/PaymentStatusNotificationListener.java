@@ -15,6 +15,8 @@ import com.amancay.application.port.out.PayableOrderPort;
 import com.amancay.application.port.out.PayableOrderPort.PayableOrder;
 import com.amancay.application.port.out.PaymentRepositoryPort;
 import com.amancay.domain.event.PaymentStatusChangedEvent;
+import com.amancay.domain.exception.BuyerEmailNotFoundException;
+import com.amancay.domain.exception.PaymentNotFoundException;
 import com.amancay.domain.model.Payment;
 import com.amancay.domain.model.PaymentStatus;
 
@@ -51,18 +53,16 @@ public class PaymentStatusNotificationListener {
     }
 
     // Aprobado o no, el intento ya quedo resuelto por quien publico el evento: este metodo
-    // solo avisa, no vuelve a validar ni a reintentar el cobro.
+    // solo avisa, no vuelve a validar ni a reintentar el cobro. Tira excepcion (en vez de
+    // solo loguear) ante datos faltantes: via Spring, AFTER_COMMIT ya la loguea como error;
+    // via el webhook de la cola (EventDeliveryController), mapea a 4xx para que no se
+    // reintente un mensaje que nunca va a poder completarse.
     private void notifyPaymentRejected(UUID paymentId) {
-        Payment payment = paymentRepository.findById(paymentId).orElse(null);
-        if (payment == null) {
-            log.warn("No se pudo mandar el mail de pago rechazado: pago {} no encontrado", paymentId);
-            return;
-        }
+        Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new PaymentNotFoundException(paymentId));
         PayableOrder order = payableOrderPort.load(payment.getOrderId());
         String buyerEmail = buyerEmailPort.findEmailsByUserId(Set.of(order.buyerId())).get(order.buyerId());
         if (buyerEmail == null) {
-            log.warn("No se pudo mandar el mail de pago rechazado: sin email para el usuario {}", order.buyerId());
-            return;
+            throw new BuyerEmailNotFoundException(order.buyerId());
         }
         MailContent content = mailContent.build(order, payment);
         mailSender.send(buyerEmail, content.subject(), content.body());

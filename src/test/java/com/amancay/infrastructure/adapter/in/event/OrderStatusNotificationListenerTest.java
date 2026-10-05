@@ -1,6 +1,7 @@
 package com.amancay.infrastructure.adapter.in.event;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -16,6 +17,8 @@ import org.junit.jupiter.api.Test;
 
 import com.amancay.application.port.out.OrderRepositoryPort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
+import com.amancay.domain.exception.BuyerEmailNotFoundException;
+import com.amancay.domain.exception.OrderNotFoundException;
 import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderFixtures;
 import com.amancay.domain.model.OrderItem;
@@ -74,22 +77,26 @@ class OrderStatusNotificationListenerTest {
         assertThat(sentMails).isEmpty();
     }
 
+    // Una excepcion aca (en vez de un no-op silencioso) es lo que permite que, el dia que
+    // esto lo dispare el webhook de la cola, el mensaje se mapee a 4xx y no se reintente.
     @Test
-    void doesNotFailWhenTheOrderNoLongerExists() {
-        listener.onOrderStatusChanged(
-                new OrderStatusChangedEvent(UUID.randomUUID(), OrderStatus.CREADO, OrderStatus.EN_PREPARACION));
+    void throwsWhenTheOrderNoLongerExists() {
+        UUID orderId = UUID.randomUUID();
 
+        assertThatThrownBy(() -> listener.onOrderStatusChanged(
+                new OrderStatusChangedEvent(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION)))
+                .isInstanceOf(OrderNotFoundException.class);
         assertThat(sentMails).isEmpty();
     }
 
     @Test
-    void doesNotFailWhenTheBuyerHasNoEmailOnFile() {
+    void throwsWhenTheBuyerHasNoEmailOnFile() {
         UUID orderId = UUID.randomUUID();
         orders.put(orderId, OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.EN_PREPARACION));
 
-        listener.onOrderStatusChanged(
-                new OrderStatusChangedEvent(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION));
-
+        assertThatThrownBy(() -> listener.onOrderStatusChanged(
+                new OrderStatusChangedEvent(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION)))
+                .isInstanceOf(BuyerEmailNotFoundException.class);
         assertThat(sentMails).isEmpty();
     }
 

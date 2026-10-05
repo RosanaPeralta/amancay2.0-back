@@ -16,6 +16,8 @@ import com.amancay.application.port.out.BuyerEmailPort;
 import com.amancay.application.port.out.MailSenderPort;
 import com.amancay.application.port.out.OrderRepositoryPort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
+import com.amancay.domain.exception.BuyerEmailNotFoundException;
+import com.amancay.domain.exception.OrderNotFoundException;
 import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderItemProduct;
 import com.amancay.domain.model.OrderStatus;
@@ -55,18 +57,15 @@ public class OrderStatusNotificationListener {
     }
 
     // El pago (tarjeta o transferencia) ya fue aprobado por quien publico el evento: este
-    // metodo solo avisa, no vuelve a validar nada.
+    // metodo solo avisa, no vuelve a validar nada. Tira excepcion (en vez de solo loguear)
+    // ante datos faltantes: via Spring, AFTER_COMMIT ya la loguea como error; via el webhook
+    // de la cola (EventDeliveryController), mapea a 4xx para que no se reintente un mensaje
+    // que nunca va a poder completarse.
     private void notifyPurchaseConfirmed(UUID orderId) {
-        Order order = orderRepository.findById(orderId).orElse(null);
-        if (order == null) {
-            log.warn("No se pudo mandar el mail de compra confirmada: orden {} no encontrada", orderId);
-            return;
-        }
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
         String buyerEmail = buyerEmailPort.findEmailsByUserId(Set.of(order.getUserId())).get(order.getUserId());
         if (buyerEmail == null) {
-            log.warn("No se pudo mandar el mail de compra confirmada: sin email para el usuario {}",
-                    order.getUserId());
-            return;
+            throw new BuyerEmailNotFoundException(order.getUserId());
         }
         Map<UUID, OrderItemProduct> products = describeOrderItems.describe(List.of(order));
         MailContent content = mailContent.build(order, products);

@@ -1,6 +1,7 @@
 package com.amancay.infrastructure.adapter.in.event;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -17,6 +18,8 @@ import com.amancay.application.port.out.PayableOrderPort;
 import com.amancay.application.port.out.PayableOrderPort.PayableOrder;
 import com.amancay.application.port.out.PaymentRepositoryPort;
 import com.amancay.domain.event.PaymentStatusChangedEvent;
+import com.amancay.domain.exception.BuyerEmailNotFoundException;
+import com.amancay.domain.exception.PaymentNotFoundException;
 import com.amancay.domain.model.Payment;
 import com.amancay.domain.model.PaymentMethod;
 import com.amancay.domain.model.PaymentStatus;
@@ -73,16 +76,20 @@ class PaymentStatusNotificationListenerTest {
         assertThat(sentMails).isEmpty();
     }
 
+    // Una excepcion aca (en vez de un no-op silencioso) es lo que permite que, el dia que
+    // esto lo dispare el webhook de la cola, el mensaje se mapee a 4xx y no se reintente.
     @Test
-    void doesNotFailWhenThePaymentNoLongerExists() {
-        listener.onPaymentStatusChanged(
-                new PaymentStatusChangedEvent(UUID.randomUUID(), PaymentStatus.PENDIENTE, PaymentStatus.RECHAZADO));
+    void throwsWhenThePaymentNoLongerExists() {
+        UUID paymentId = UUID.randomUUID();
 
+        assertThatThrownBy(() -> listener.onPaymentStatusChanged(
+                new PaymentStatusChangedEvent(paymentId, PaymentStatus.PENDIENTE, PaymentStatus.RECHAZADO)))
+                .isInstanceOf(PaymentNotFoundException.class);
         assertThat(sentMails).isEmpty();
     }
 
     @Test
-    void doesNotFailWhenTheBuyerHasNoEmailOnFile() {
+    void throwsWhenTheBuyerHasNoEmailOnFile() {
         UUID buyerId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         UUID paymentId = UUID.randomUUID();
@@ -90,9 +97,9 @@ class PaymentStatusNotificationListenerTest {
         payments.put(paymentId, new Payment(paymentId, orderId, new BigDecimal("150.00"),
                 PaymentMethod.TARJETA_CREDITO, PaymentStatus.RECHAZADO, null, null, null));
 
-        listener.onPaymentStatusChanged(
-                new PaymentStatusChangedEvent(paymentId, PaymentStatus.PENDIENTE, PaymentStatus.RECHAZADO));
-
+        assertThatThrownBy(() -> listener.onPaymentStatusChanged(
+                new PaymentStatusChangedEvent(paymentId, PaymentStatus.PENDIENTE, PaymentStatus.RECHAZADO)))
+                .isInstanceOf(BuyerEmailNotFoundException.class);
         assertThat(sentMails).isEmpty();
     }
 
