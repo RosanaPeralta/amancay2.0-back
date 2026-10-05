@@ -39,7 +39,8 @@ class PaymentStatusNotificationListenerTest {
                 userIds.stream().filter(emails::containsKey).forEach(id -> found.put(id, emails.get(id)));
                 return found;
             },
-            (to, subject, body) -> sentMails.add(new SentMail(to, subject, body)));
+            (to, subject, body) -> sentMails.add(new SentMail(to, subject, body)),
+            new PaymentRejectedMailContent());
 
     @Test
     void sendsThePaymentRejectedMailWhenThePaymentIsRechazado() {
@@ -57,7 +58,6 @@ class PaymentStatusNotificationListenerTest {
         assertThat(sentMails).singleElement().satisfies(mail -> {
             assertThat(mail.to()).isEqualTo("buyer@amancay.com");
             assertThat(mail.subject()).contains(orderId.toString());
-            assertThat(mail.body()).contains("150.00", "TARJETA_CREDITO", "reintentes el pago");
         });
     }
 

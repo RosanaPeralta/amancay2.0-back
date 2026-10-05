@@ -29,13 +29,16 @@ public class PaymentStatusNotificationListener {
     private final PayableOrderPort payableOrderPort;
     private final BuyerEmailPort buyerEmailPort;
     private final MailSenderPort mailSender;
+    private final PaymentRejectedMailContent mailContent;
 
     public PaymentStatusNotificationListener(PaymentRepositoryPort paymentRepository,
-            PayableOrderPort payableOrderPort, BuyerEmailPort buyerEmailPort, MailSenderPort mailSender) {
+            PayableOrderPort payableOrderPort, BuyerEmailPort buyerEmailPort, MailSenderPort mailSender,
+            PaymentRejectedMailContent mailContent) {
         this.paymentRepository = paymentRepository;
         this.payableOrderPort = payableOrderPort;
         this.buyerEmailPort = buyerEmailPort;
         this.mailSender = mailSender;
+        this.mailContent = mailContent;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -61,16 +64,7 @@ public class PaymentStatusNotificationListener {
             log.warn("No se pudo mandar el mail de pago rechazado: sin email para el usuario {}", order.buyerId());
             return;
         }
-        mailSender.send(buyerEmail, subject(order), body(order, payment));
-    }
-
-    private String subject(PayableOrder order) {
-        return "Tu pago para la compra #" + order.id() + " fue rechazado";
-    }
-
-    private String body(PayableOrder order, Payment payment) {
-        return "Tu pago de " + payment.getAmount().toPlainString() + " (" + payment.getMethod()
-                + ") para la compra #" + order.id() + " fue rechazado.\n\n"
-                + "Tu compra no va a estar lista hasta que reintentes el pago.";
+        MailContent content = mailContent.build(order, payment);
+        mailSender.send(buyerEmail, content.subject(), content.body());
     }
 }

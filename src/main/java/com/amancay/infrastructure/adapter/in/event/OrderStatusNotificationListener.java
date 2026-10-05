@@ -1,6 +1,5 @@
 package com.amancay.infrastructure.adapter.in.event;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,7 +17,6 @@ import com.amancay.application.port.out.MailSenderPort;
 import com.amancay.application.port.out.OrderRepositoryPort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
 import com.amancay.domain.model.Order;
-import com.amancay.domain.model.OrderItem;
 import com.amancay.domain.model.OrderItemProduct;
 import com.amancay.domain.model.OrderStatus;
 
@@ -35,13 +33,16 @@ public class OrderStatusNotificationListener {
     private final DescribeOrderItemsQuery describeOrderItems;
     private final BuyerEmailPort buyerEmailPort;
     private final MailSenderPort mailSender;
+    private final PurchaseConfirmedMailContent mailContent;
 
     public OrderStatusNotificationListener(OrderRepositoryPort orderRepository,
-            DescribeOrderItemsQuery describeOrderItems, BuyerEmailPort buyerEmailPort, MailSenderPort mailSender) {
+            DescribeOrderItemsQuery describeOrderItems, BuyerEmailPort buyerEmailPort, MailSenderPort mailSender,
+            PurchaseConfirmedMailContent mailContent) {
         this.orderRepository = orderRepository;
         this.describeOrderItems = describeOrderItems;
         this.buyerEmailPort = buyerEmailPort;
         this.mailSender = mailSender;
+        this.mailContent = mailContent;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -68,30 +69,7 @@ public class OrderStatusNotificationListener {
             return;
         }
         Map<UUID, OrderItemProduct> products = describeOrderItems.describe(List.of(order));
-        mailSender.send(buyerEmail, subject(order), body(order, products));
-    }
-
-    private String subject(Order order) {
-        return "Confirmamos tu compra #" + order.getId();
-    }
-
-    private String body(Order order, Map<UUID, OrderItemProduct> products) {
-        StringBuilder body = new StringBuilder("Tu compra se realizo con exito y ya esta en preparacion.\n\n");
-        for (OrderItem item : order.getItems()) {
-            OrderItemProduct product = products.get(item.productVariantId());
-            String name = product == null ? item.productVariantId().toString() : product.name();
-            body.append("- ").append(name).append(" x").append(item.quantity())
-                    .append(" (").append(money(item.unitPrice())).append(" c/u) = ")
-                    .append(money(item.subtotal())).append('\n');
-        }
-        body.append('\n')
-                .append("Subtotal: ").append(money(order.getSubtotal())).append('\n')
-                .append("Envio: ").append(money(order.getShippingCost())).append('\n')
-                .append("Total: ").append(money(order.getTotal())).append('\n');
-        return body.toString();
-    }
-
-    private String money(BigDecimal amount) {
-        return amount.toPlainString();
+        MailContent content = mailContent.build(order, products);
+        mailSender.send(buyerEmail, content.subject(), content.body());
     }
 }

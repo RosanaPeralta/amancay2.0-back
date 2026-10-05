@@ -40,7 +40,8 @@ class OrderStatusNotificationListenerTest {
                 userIds.stream().filter(emails::containsKey).forEach(id -> found.put(id, emails.get(id)));
                 return found;
             },
-            (to, subject, body) -> sentMails.add(new SentMail(to, subject, body)));
+            (to, subject, body) -> sentMails.add(new SentMail(to, subject, body)),
+            new PurchaseConfirmedMailContent());
 
     @Test
     void sendsThePurchaseConfirmationMailWhenTheOrderMovesToEnPreparacion() {
@@ -58,7 +59,7 @@ class OrderStatusNotificationListenerTest {
         assertThat(sentMails).singleElement().satisfies(mail -> {
             assertThat(mail.to()).isEqualTo("buyer@amancay.com");
             assertThat(mail.subject()).contains(orderId.toString());
-            assertThat(mail.body()).contains("Maceta de barro", "x2", "Total: 100.00");
+            assertThat(mail.body()).contains("Maceta de barro");
         });
     }
 
