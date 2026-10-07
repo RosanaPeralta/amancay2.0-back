@@ -4,6 +4,6 @@ import java.util.UUID;
 
 import jakarta.validation.constraints.NotNull;
 
-public record AddFavoriteRequest(
+public record CreateFavoriteRequest(
         @NotNull UUID productId) {
 }

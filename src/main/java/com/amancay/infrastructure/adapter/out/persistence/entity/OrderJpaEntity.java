@@ -83,12 +83,12 @@ public class OrderJpaEntity {
     @OrderBy("changedAt ASC")
     private List<OrderStatusHistoryJpaEntity> statusHistory = new ArrayList<>();
 
-    public void addItem(OrderItemJpaEntity item) {
+    public void createItem(OrderItemJpaEntity item) {
         items.add(item);
         item.setOrder(this);
     }
 
-    public void addStatusHistory(OrderStatusHistoryJpaEntity history) {
+    public void createStatusHistory(OrderStatusHistoryJpaEntity history) {
         statusHistory.add(history);
         history.setOrder(this);
     }

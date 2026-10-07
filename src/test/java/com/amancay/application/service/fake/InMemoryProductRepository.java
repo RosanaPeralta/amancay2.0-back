@@ -29,7 +29,7 @@ public class InMemoryProductRepository implements ProductRepositoryPort {
     public final List<String> calls = new ArrayList<>();
     private Instant clock = Instant.parse("2026-01-01T00:00:00Z");
 
-    public Product add(String name, String slug, boolean active, Set<UUID> categoryIds) {
+    public Product create(String name, String slug, boolean active, Set<UUID> categoryIds) {
         return save(new Product(null, name, slug, null, null, active, null, null, List.of(), List.of(), categoryIds,
                 null));
     }

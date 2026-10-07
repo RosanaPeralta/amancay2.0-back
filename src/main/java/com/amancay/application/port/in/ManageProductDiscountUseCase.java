@@ -12,5 +12,5 @@ public interface ManageProductDiscountUseCase {
     // tampoco queda creado el descuento.
     Product createAndAssignDiscount(UUID requesterId, UUID productId, BigDecimal percentage, String description);
 
-    Product removeDiscount(UUID requesterId, UUID productId);
+    Product deleteDiscount(UUID requesterId, UUID productId);
 }

@@ -31,12 +31,12 @@ class FavoriteServiceTest {
     @BeforeEach
     void setUp() {
         favoriteService = new FavoriteService(favorites, products);
-        carpa = products.add("Carpa", "carpa", true, Set.of());
+        carpa = products.create("Carpa", "carpa", true, Set.of());
     }
 
     @Test
-    void addsAFavoriteWithProductData() {
-        FavoriteProduct result = favoriteService.add(USER_ID, carpa.getId());
+    void createsAFavoriteWithProductData() {
+        FavoriteProduct result = favoriteService.create(USER_ID, carpa.getId());
 
         assertThat(result.favorite().getProductId()).isEqualTo(carpa.getId());
         assertThat(result.product().name()).isEqualTo("Carpa");
@@ -47,42 +47,42 @@ class FavoriteServiceTest {
 
     @Test
     void rejectsUnknownProduct() {
-        assertThatThrownBy(() -> favoriteService.add(USER_ID, UUID.randomUUID()))
+        assertThatThrownBy(() -> favoriteService.create(USER_ID, UUID.randomUUID()))
                 .isInstanceOf(ProductNotFoundException.class);
         assertThat(favorites.calls).doesNotContain("save");
     }
 
     @Test
     void rejectsDuplicateFavorite() {
-        favoriteService.add(USER_ID, carpa.getId());
+        favoriteService.create(USER_ID, carpa.getId());
         favorites.calls.clear();
 
-        assertThatThrownBy(() -> favoriteService.add(USER_ID, carpa.getId()))
+        assertThatThrownBy(() -> favoriteService.create(USER_ID, carpa.getId()))
                 .isInstanceOf(DuplicateFavoriteException.class);
         assertThat(favorites.calls).doesNotContain("save");
     }
 
     @Test
-    void removesAnExistingFavorite() {
-        favoriteService.add(USER_ID, carpa.getId());
+    void deletesAnExistingFavorite() {
+        favoriteService.create(USER_ID, carpa.getId());
 
-        favoriteService.remove(USER_ID, carpa.getId());
+        favoriteService.delete(USER_ID, carpa.getId());
 
         assertThat(favorites.size()).isZero();
     }
 
     @Test
     void removingAMissingFavoriteIsNotFound() {
-        assertThatThrownBy(() -> favoriteService.remove(USER_ID, carpa.getId()))
+        assertThatThrownBy(() -> favoriteService.delete(USER_ID, carpa.getId()))
                 .isInstanceOf(FavoriteNotFoundException.class);
         assertThat(favorites.calls).doesNotContain("delete");
     }
 
     @Test
     void listsFavoritesResolvingProductsInOneQuery() {
-        Product mochila = products.add("Mochila", "mochila", true, Set.of());
-        favoriteService.add(USER_ID, carpa.getId());
-        favoriteService.add(USER_ID, mochila.getId());
+        Product mochila = products.create("Mochila", "mochila", true, Set.of());
+        favoriteService.create(USER_ID, carpa.getId());
+        favoriteService.create(USER_ID, mochila.getId());
         products.calls.clear();
 
         PageResult<FavoriteProduct> result = favoriteService.list(USER_ID, new PageQuery(0, 20));
@@ -95,7 +95,7 @@ class FavoriteServiceTest {
 
     @Test
     void listsOnlyProductIds() {
-        favoriteService.add(USER_ID, carpa.getId());
+        favoriteService.create(USER_ID, carpa.getId());
 
         assertThat(favoriteService.listProductIds(USER_ID)).containsExactly(carpa.getId());
     }

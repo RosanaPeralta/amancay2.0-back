@@ -110,10 +110,10 @@ public class ProductService implements ListProductsQuery, GetProductQuery, Creat
 
     @Override
     @Transactional
-    public Product removeDiscount(UUID requesterId, UUID productId) {
+    public Product deleteDiscount(UUID requesterId, UUID productId) {
         adminGuard.requireAdmin(requesterId);
         Product product = findProduct(productId);
-        product.removeDiscount();
+        product.deleteDiscount();
         return productRepository.save(product);
     }
 

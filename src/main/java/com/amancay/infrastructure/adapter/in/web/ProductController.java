@@ -117,9 +117,9 @@ public class ProductController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{productId}/discounts")
-    public ResponseEntity<Void> removeDiscount(@AuthenticationPrincipal LoggedUser loggedUser,
+    public ResponseEntity<Void> deleteDiscount(@AuthenticationPrincipal LoggedUser loggedUser,
             @PathVariable UUID productId) {
-        manageProductDiscountUseCase.removeDiscount(loggedUser.id(), productId);
+        manageProductDiscountUseCase.deleteDiscount(loggedUser.id(), productId);
         return ResponseEntity.noContent().build();
     }
 }

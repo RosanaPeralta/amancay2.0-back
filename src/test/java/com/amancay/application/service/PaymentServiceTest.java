@@ -69,7 +69,7 @@ class PaymentServiceTest {
 
     @Test
     void approvedPaymentMovesTheOrderToEnPreparacion() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
 
         PaymentOutcome result = paymentService.create(REQUESTER_ID, order.id(), card());
 
@@ -81,7 +81,7 @@ class PaymentServiceTest {
 
     @Test
     void rejectedPaymentIsSavedWithItsReasonAndDoesNotTouchTheOrder() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         nextProcessorResult = PaymentResult.rejected("Card declined (simulated)");
 
         PaymentOutcome result = paymentService.create(REQUESTER_ID, order.id(), card());
@@ -94,7 +94,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotPayAnOrderThatAlreadyHasAnApprovedPayment() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         payments.put(order.id(), PaymentStatus.APROBADO, PaymentMethod.TARJETA_CREDITO);
 
         assertThatThrownBy(() -> paymentService.create(REQUESTER_ID, order.id(), card()))
@@ -111,7 +111,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotPayAnotherUsersOrder() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
 
         assertThatThrownBy(() -> paymentService.create(REQUESTER_ID, order.id(), card()))
                 .isInstanceOf(OrderAccessDeniedException.class);
@@ -120,7 +120,7 @@ class PaymentServiceTest {
 
     @Test
     void retryingARejectedPaymentCreatesANewAttemptForTheSameOrder() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment rejected = payments.put(order.id(), PaymentStatus.RECHAZADO, PaymentMethod.TARJETA_CREDITO);
 
         PaymentOutcome result = paymentService.retry(REQUESTER_ID, rejected.getId(), card());
@@ -133,7 +133,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotRetryAPaymentThatWasNotRejected() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment approved = payments.put(order.id(), PaymentStatus.APROBADO, PaymentMethod.TARJETA_CREDITO);
 
         assertThatThrownBy(() -> paymentService.retry(REQUESTER_ID, approved.getId(), card()))
@@ -148,7 +148,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotRetryAnotherUsersPayment() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
         Payment rejected = payments.put(order.id(), PaymentStatus.RECHAZADO, PaymentMethod.TARJETA_CREDITO);
 
         assertThatThrownBy(() -> paymentService.retry(REQUESTER_ID, rejected.getId(), card()))
@@ -158,7 +158,7 @@ class PaymentServiceTest {
 
     @Test
     void listsPaymentsOfOwnOrderNewestFirst() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment older = payments.put(order.id(), PaymentStatus.RECHAZADO, PaymentMethod.TARJETA_CREDITO);
         Payment newer = payments.put(order.id(), PaymentStatus.APROBADO, PaymentMethod.TARJETA_CREDITO);
 
@@ -169,7 +169,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotListPaymentsOfAnotherUsersOrder() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
 
         assertThatThrownBy(() -> paymentService.listByOrder(REQUESTER_ID, order.id()))
                 .isInstanceOf(OrderAccessDeniedException.class);
@@ -177,7 +177,7 @@ class PaymentServiceTest {
 
     @Test
     void confirmingAPendingPaymentAsApprovedMovesTheOrderForward() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
         Payment result = paymentService.confirm(ADMIN_ID, pending.getId(), PaymentStatus.APROBADO);
@@ -189,7 +189,7 @@ class PaymentServiceTest {
 
     @Test
     void confirmingAPendingPaymentAsRejectedDoesNotTouchTheOrder() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
         Payment result = paymentService.confirm(ADMIN_ID, pending.getId(), PaymentStatus.RECHAZADO);
@@ -200,7 +200,7 @@ class PaymentServiceTest {
 
     @Test
     void buyerCannotConfirmPaymentsNorListPendingOnes() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
         assertThatThrownBy(() -> paymentService.confirm(REQUESTER_ID, pending.getId(), PaymentStatus.APROBADO))
@@ -212,7 +212,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotConfirmAPaymentThatIsNotPending() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
         Payment approved = payments.put(order.id(), PaymentStatus.APROBADO, PaymentMethod.TRANSFERENCIA);
 
         assertThatThrownBy(() -> paymentService.confirm(ADMIN_ID, approved.getId(), PaymentStatus.APROBADO))
@@ -230,7 +230,7 @@ class PaymentServiceTest {
     void approvedPaymentDecrementsStockOfEachItem() {
         UUID variantId = UUID.randomUUID();
         stock.set(variantId, 5);
-        PayableOrder order = orders.add(REQUESTER_ID, "200", new PayableOrder.Line(variantId, 3));
+        PayableOrder order = orders.create(REQUESTER_ID, "200", new PayableOrder.Line(variantId, 3));
 
         paymentService.create(REQUESTER_ID, order.id(), card());
 
@@ -241,7 +241,7 @@ class PaymentServiceTest {
     void approvalFailsWhenStockRanOutInTheMeantime() {
         UUID variantId = UUID.randomUUID();
         stock.set(variantId, 2);
-        PayableOrder order = orders.add(REQUESTER_ID, "200", new PayableOrder.Line(variantId, 3));
+        PayableOrder order = orders.create(REQUESTER_ID, "200", new PayableOrder.Line(variantId, 3));
 
         assertThatThrownBy(() -> paymentService.create(REQUESTER_ID, order.id(), card()))
                 .isInstanceOf(InsufficientStockException.class);
@@ -252,7 +252,7 @@ class PaymentServiceTest {
     void confirmingATransferDecrementsStockToo() {
         UUID variantId = UUID.randomUUID();
         stock.set(variantId, 4);
-        PayableOrder order = orders.add(UUID.randomUUID(), "200", new PayableOrder.Line(variantId, 1));
+        PayableOrder order = orders.create(UUID.randomUUID(), "200", new PayableOrder.Line(variantId, 1));
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
         paymentService.confirm(ADMIN_ID, pending.getId(), PaymentStatus.APROBADO);
@@ -262,7 +262,7 @@ class PaymentServiceTest {
 
     @Test
     void attachingTransferReferenceStoresIt() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
         Payment result = paymentService.attachTransferReference(REQUESTER_ID, pending.getId(), "TRX-123");
@@ -273,7 +273,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotAttachTransferReferenceToACardPayment() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TARJETA_CREDITO);
 
         assertThatThrownBy(() -> paymentService.attachTransferReference(REQUESTER_ID, pending.getId(), "TRX-123"))
@@ -282,7 +282,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotAttachTransferReferenceToAnAlreadyDecidedPayment() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment approved = payments.put(order.id(), PaymentStatus.APROBADO, PaymentMethod.TRANSFERENCIA);
 
         assertThatThrownBy(() -> paymentService.attachTransferReference(REQUESTER_ID, approved.getId(), "TRX-123"))
@@ -291,7 +291,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotAttachTransferReferenceToAnotherUsersPayment() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
         assertThatThrownBy(() -> paymentService.attachTransferReference(REQUESTER_ID, pending.getId(), "TRX-123"))
@@ -303,7 +303,7 @@ class PaymentServiceTest {
     void listPendingReturnsAllPendingPaymentsWithBuyerEmail() {
         UUID buyerId = UUID.randomUUID();
         emails.put(buyerId, "buyer@amancay.com");
-        PayableOrder order = orders.add(buyerId, "200");
+        PayableOrder order = orders.create(buyerId, "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
         payments.put(order.id(), PaymentStatus.RECHAZADO, PaymentMethod.TARJETA_CREDITO);
 
@@ -384,7 +384,7 @@ class PaymentServiceTest {
         private final Map<UUID, PayableOrder> store = new HashMap<>();
         private final List<UUID> paid = new ArrayList<>();
 
-        PayableOrder add(UUID buyerId, String total, PayableOrder.Line... lines) {
+        PayableOrder create(UUID buyerId, String total, PayableOrder.Line... lines) {
             PayableOrder order = new PayableOrder(UUID.randomUUID(), buyerId, new BigDecimal(total), List.of(lines));
             store.put(order.id(), order);
             return order;

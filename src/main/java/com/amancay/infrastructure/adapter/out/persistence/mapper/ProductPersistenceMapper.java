@@ -59,7 +59,7 @@ public class ProductPersistenceMapper {
             ProductVariantJpaEntity target;
             if (variant.getId() == null) {
                 target = new ProductVariantJpaEntity();
-                entity.addVariant(target);
+                entity.createVariant(target);
             } else {
                 target = variantsById.get(variant.getId());
                 keptVariants.add(variant.getId());
@@ -76,7 +76,7 @@ public class ProductPersistenceMapper {
             ProductImageJpaEntity target;
             if (image.getId() == null) {
                 target = new ProductImageJpaEntity();
-                entity.addImage(target);
+                entity.createImage(target);
             } else {
                 target = imagesById.get(image.getId());
                 keptImages.add(image.getId());

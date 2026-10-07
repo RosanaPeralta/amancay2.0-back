@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 
 import com.amancay.domain.event.OrderStatusChangedEvent;
 
-// Placeholder: por ahora solo loguea.
 @Component
 public class OrderStatusNotificationListener {
     private static final Logger log = LoggerFactory.getLogger(OrderStatusNotificationListener.class);

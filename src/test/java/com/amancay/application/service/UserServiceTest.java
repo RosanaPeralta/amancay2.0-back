@@ -52,7 +52,7 @@ class UserServiceTest {
             @Override
             public void insertIfAbsent(UUID userId, String email, String name) {
                 calls.add("insertIfAbsent");
-                add(userId, email, name, Role.ADMIN, true);
+                create(userId, email, name, Role.ADMIN, true);
             }
         };
 
@@ -64,7 +64,7 @@ class UserServiceTest {
     @Test
     void existingUserKeepsTheirRoleAndIsNotSavedAgain() {
         UUID id = UUID.randomUUID();
-        users.add(id, "buyer@amancay.com", "Ada", Role.ADMIN, true);
+        users.create(id, "buyer@amancay.com", "Ada", Role.ADMIN, true);
 
         assertThat(userService.getOrProvision(id, "buyer@amancay.com", "Ada").getRole()).isEqualTo(Role.ADMIN);
         assertThat(users.count("insertIfAbsent")).isZero();
@@ -75,7 +75,7 @@ class UserServiceTest {
     void rejectsInactiveBuyersAndAdminsBeforeSynchronizingTheirProfile() {
         for (Role role : Role.values()) {
             UUID id = UUID.randomUUID();
-            users.add(id, "old@amancay.com", "Ada", role, false);
+            users.create(id, "old@amancay.com", "Ada", role, false);
 
             assertThatThrownBy(() -> userService.getOrProvision(id, "new@amancay.com", "Grace"))
                     .isInstanceOf(InactiveUserException.class);
@@ -87,7 +87,7 @@ class UserServiceTest {
     @Test
     void returnsExistingUserWithoutReplacingTheirName() {
         UUID id = UUID.randomUUID();
-        users.add(id, "buyer@amancay.com", "Ada", Role.BUYER, true);
+        users.create(id, "buyer@amancay.com", "Ada", Role.BUYER, true);
 
         User result = userService.getOrProvision(id, "buyer@amancay.com", "Ignored");
 
@@ -98,7 +98,7 @@ class UserServiceTest {
     @Test
     void fillsTheNameFromTheTokenOnlyWhenItWasMissing() {
         UUID id = UUID.randomUUID();
-        users.add(id, "buyer@amancay.com", null, Role.BUYER, true);
+        users.create(id, "buyer@amancay.com", null, Role.BUYER, true);
 
         assertThat(userService.getOrProvision(id, "buyer@amancay.com", "Ada").getName()).isEqualTo("Ada");
         assertThat(users.stored(id).getName()).isEqualTo("Ada");
@@ -107,7 +107,7 @@ class UserServiceTest {
     @Test
     void updatesEmailWhenItChangedInTheToken() {
         UUID id = UUID.randomUUID();
-        users.add(id, "old@amancay.com", "Ada", Role.BUYER, true);
+        users.create(id, "old@amancay.com", "Ada", Role.BUYER, true);
 
         User result = userService.getOrProvision(id, "new@amancay.com", "Ada");
 
@@ -118,7 +118,7 @@ class UserServiceTest {
     @Test
     void updatesNameViaUpdateProfile() {
         UUID id = UUID.randomUUID();
-        users.add(id, "buyer@amancay.com", "Ada", Role.BUYER, true);
+        users.create(id, "buyer@amancay.com", "Ada", Role.BUYER, true);
 
         User result = userService.updateName(id, "Grace");
 
@@ -135,7 +135,7 @@ class UserServiceTest {
     @Test
     void listsAllUsersWhenQueryIsBlank() {
         UUID id = UUID.randomUUID();
-        users.add(id, "a@amancay.com", "Ada", Role.BUYER, true);
+        users.create(id, "a@amancay.com", "Ada", Role.BUYER, true);
 
         PageResult<User> result = userService.list(ADMIN_ID, "  ", PAGE);
 
@@ -145,9 +145,9 @@ class UserServiceTest {
 
     @Test
     void searchesUsersByEmailOrNameNewestFirst() {
-        users.add(UUID.randomUUID(), "ada@amancay.com", "Ada", Role.BUYER, true);
-        users.add(UUID.randomUUID(), "b@amancay.com", "Adalberto", Role.BUYER, true);
-        users.add(UUID.randomUUID(), "c@amancay.com", "Carla", Role.BUYER, true);
+        users.create(UUID.randomUUID(), "ada@amancay.com", "Ada", Role.BUYER, true);
+        users.create(UUID.randomUUID(), "b@amancay.com", "Adalberto", Role.BUYER, true);
+        users.create(UUID.randomUUID(), "c@amancay.com", "Carla", Role.BUYER, true);
 
         PageResult<User> result = userService.list(ADMIN_ID, " ada ", PAGE);
 
@@ -158,7 +158,7 @@ class UserServiceTest {
     @Test
     void adminPromotesAnotherUser() {
         UUID targetId = UUID.randomUUID();
-        users.add(targetId, "b@amancay.com", "Bob", Role.BUYER, true);
+        users.create(targetId, "b@amancay.com", "Bob", Role.BUYER, true);
 
         assertThat(userService.changeRole(ADMIN_ID, targetId, Role.ADMIN).getRole()).isEqualTo(Role.ADMIN);
         assertThat(users.stored(targetId).getRole()).isEqualTo(Role.ADMIN);
@@ -167,7 +167,7 @@ class UserServiceTest {
     @Test
     void adminCannotRemoveTheirOwnAdminRole() {
         UUID adminId = ADMIN_ID;
-        users.add(adminId, "a@amancay.com", "Ada", Role.ADMIN, true);
+        users.create(adminId, "a@amancay.com", "Ada", Role.ADMIN, true);
 
         assertThatThrownBy(() -> userService.changeRole(adminId, adminId, Role.BUYER))
                 .isInstanceOf(SelfRoleChangeException.class);

@@ -115,10 +115,10 @@ class ProductServiceTest {
     @Test
     void listsProductsWithFiltersAndSort() {
         UUID category = UUID.randomUUID();
-        products.add("Coffee", "coffee", true, Set.of(category));
-        products.add("Cocoa", "cocoa", true, Set.of(category));
-        products.add("Coffee beans", "coffee-beans", false, Set.of(category));
-        products.add("Tea", "tea", true, Set.of());
+        products.create("Coffee", "coffee", true, Set.of(category));
+        products.create("Cocoa", "cocoa", true, Set.of(category));
+        products.create("Coffee beans", "coffee-beans", false, Set.of(category));
+        products.create("Tea", "tea", true, Set.of());
 
         PageResult<ProductSummary> result = productService.list(new ProductFilter(" co ", category, true),
                 ProductSort.NAME_DESC, new PageQuery(0, 12));
