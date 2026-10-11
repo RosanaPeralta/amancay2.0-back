@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 // Lo unico que hace falta saber de una variante para armar un pedido.
+// price ya tiene aplicado el descuento del producto.
 public interface LoadProductVariantPort {
     Optional<ProductVariantInfo> findById(UUID id);
 
