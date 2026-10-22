@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.amancay.domain.exception.InvalidPaymentStatusTransitionException;
+
 // Una orden puede tener varios Payment (uno por cada intento): asi se modela el
 // reintento de un pago fallido, sin necesidad de una entidad extra. La orden se
 // referencia solo por id.
@@ -55,11 +57,10 @@ public class Payment {
         }
     }
 
-    // El admin decide sobre una transferencia que quedo PENDIENTE.
     public void confirm(PaymentStatus decision) {
         requireFinalDecision(decision);
-        if (status != PaymentStatus.PENDIENTE) {
-            throw new IllegalStateException("Only a pending payment can be confirmed");
+        if (!status.canTransitionTo(decision)) {
+            throw new InvalidPaymentStatusTransitionException(status, decision);
         }
         this.status = decision;
     }

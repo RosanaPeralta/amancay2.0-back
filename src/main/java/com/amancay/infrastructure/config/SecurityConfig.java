@@ -37,6 +37,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.amancay.application.port.in.GetOrProvisionUserUseCase;
 import com.amancay.infrastructure.security.DevUserAuthenticationFilter;
+import com.amancay.infrastructure.security.QueueWebhookAuthFilter;
 import com.amancay.infrastructure.security.SupabaseJwtAuthenticationConverter;
 import com.amancay.infrastructure.security.UserRoleAuthoritiesFilter;
 
@@ -62,6 +63,9 @@ public class SecurityConfig {
 
     @Value("${amancay.cors.allowed-origins:http://localhost:5173}")
     private List<String> allowedOrigins;
+
+    @Value("${amancay.events.webhook.api-key:}")
+    private String eventsWebhookApiKey;
 
     public SecurityConfig(SupabaseJwtAuthenticationConverter jwtAuthenticationConverter, GetOrProvisionUserUseCase getOrProvisionUser) {
         this.jwtAuthenticationConverter = jwtAuthenticationConverter;
@@ -107,6 +111,8 @@ public class SecurityConfig {
             http.addFilterBefore(new DevUserAuthenticationFilter(UUID.fromString(devUserId), devUserEmail),
                     BearerTokenAuthenticationFilter.class);
         }
+
+        http.addFilterBefore(new QueueWebhookAuthFilter(eventsWebhookApiKey), BearerTokenAuthenticationFilter.class);
 
         // Despues de los filtros de autenticacion, para leer al usuario ya autenticado.
         http.addFilterAfter(new UserRoleAuthoritiesFilter(getOrProvisionUser), BearerTokenAuthenticationFilter.class);
