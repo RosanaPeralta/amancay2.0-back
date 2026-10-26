@@ -17,7 +17,7 @@ public interface ProductRepositoryPort {
 
     boolean existsById(UUID id);
 
-    PageResult<ProductSummary> findSummaries(ProductFilter filter, ProductSort sort, PageQuery page);
+    PageResult<Product> findPage(ProductFilter filter, ProductSort sort, PageQuery page);
 
     Optional<ProductSummary> findSummaryById(UUID id);
 

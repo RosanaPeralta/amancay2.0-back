@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.amancay.application.port.out.ProductRepositoryPort;
 import com.amancay.domain.exception.ProductNotFoundException;
@@ -47,11 +48,14 @@ class ProductRepositoryAdapter implements ProductRepositoryPort {
         return repository.existsById(id);
     }
 
+    // Transaccional para inicializar las colecciones lazy de toda la pagina en pocas consultas
+    // IN (...) (default_batch_fetch_size) en lugar de una por producto.
     @Override
-    public PageResult<ProductSummary> findSummaries(ProductFilter filter, ProductSort sort, PageQuery page) {
+    @Transactional(readOnly = true)
+    public PageResult<Product> findPage(ProductFilter filter, ProductSort sort, PageQuery page) {
         return PageMapper.toPageResult(repository.findAll(
                 ProductSpecifications.matching(filter.name(), filter.categoryId(), filter.active()),
-                PageMapper.toPageable(page, toSort(sort))), mapper::toSummary);
+                PageMapper.toPageable(page, toSort(sort))), mapper::toDomain);
     }
 
     @Override
