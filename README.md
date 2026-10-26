@@ -98,6 +98,25 @@ Swagger UI está disponible en `/swagger-ui/index.html` y el contrato adicional 
 
 Perfil (`/api/me`), direcciones (`/api/me/addresses`), favoritos (`/api/me/favorites`), reseñas (`/api/products/{id}/reviews`, `/api/reviews/{id}`, `/api/me/reviews`) y administración (`/api/admin/**`, solo ADMIN). Todos los endpoints están en Swagger UI.
 
+## Recomendaciones con IA
+
+`GET /api/me/recommendations?limit=8` (requiere usuario autenticado) devuelve productos activos que el usuario todavía no marcó como favoritos, ordenados por afinidad con sus favoritos:
+
+```json
+{ "source": "AI", "favoritesCount": 3, "products": [ /* mismo formato que GET /api/products/{id} */ ] }
+```
+
+- **`AI`**: el ranking lo arma un LLM vía una API compatible con OpenAI (`chat/completions`); por defecto [Groq](https://console.groq.com), que tiene capa gratuita sin tarjeta, a partir de nombre, categorías y descripción corta de favoritos y candidatos. Los ids que devuelve se validan contra el catálogo (se descartan los inventados o repetidos) y el resultado se cachea en memoria por usuario mientras sus favoritos no cambien (`AMANCAY_RECOMMENDATIONS_CACHE_TTL`, default 30 min).
+- **`CATEGORIES`**: fallback sin IA (no hay `AI_API_KEY`, timeout o error): productos que comparten más categorías con los favoritos.
+- **`NONE`**: el usuario no tiene favoritos activos.
+
+| Variable                             | Default                     | Descripción                                   |
+|--------------------------------------|-----------------------------|-----------------------------------------------|
+| `AI_API_KEY`                         | *(vacía)*                   | API key de [Groq](https://console.groq.com/keys). Opcional. |
+| `AI_BASE_URL`                        | `https://api.groq.com/openai/v1` | Cualquier API compatible con OpenAI (xAI, OpenRouter, Ollama...). |
+| `AI_MODEL`                           | `openai/gpt-oss-120b`   | Modelo a usar.                                |
+| `AMANCAY_RECOMMENDATIONS_CACHE_TTL`  | `PT30M`                     | Vigencia del ranking cacheado (ISO-8601).     |
+
 ## Autenticación
 
 El login y el registro ocurren en **Supabase Auth** (desde el front). El backend no tiene endpoints de login: actúa como *resource server* y valida en cada request el JWT que emite Supabase, enviado como `Authorization: Bearer <access_token>`.
