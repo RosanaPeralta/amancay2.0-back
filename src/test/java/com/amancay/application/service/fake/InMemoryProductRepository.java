@@ -80,6 +80,12 @@ public class InMemoryProductRepository implements ProductRepositoryPort {
     }
 
     @Override
+    public List<Product> findAllById(Collection<UUID> ids) {
+        calls.add("findAllById");
+        return ids.stream().map(store::get).filter(p -> p != null).map(InMemoryProductRepository::copy).toList();
+    }
+
+    @Override
     public boolean existsBySlug(String slug) {
         return store.values().stream().anyMatch(p -> p.getSlug().equals(slug));
     }

@@ -68,6 +68,14 @@ class ProductRepositoryAdapter implements ProductRepositoryPort {
         return repository.findAllById(ids).stream().map(mapper::toSummary).toList();
     }
 
+    // Transaccional para inicializar las colecciones lazy; con default_batch_fetch_size se
+    // resuelven en pocas consultas IN (...) en lugar de una por producto.
+    @Override
+    @Transactional(readOnly = true)
+    public List<Product> findAllById(Collection<UUID> ids) {
+        return repository.findAllById(ids).stream().map(mapper::toDomain).toList();
+    }
+
     @Override
     public boolean existsBySlug(String slug) {
         return repository.existsBySlug(slug);

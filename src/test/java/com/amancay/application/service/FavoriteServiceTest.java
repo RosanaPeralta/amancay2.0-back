@@ -39,9 +39,9 @@ class FavoriteServiceTest {
         FavoriteProduct result = favoriteService.create(USER_ID, carpa.getId());
 
         assertThat(result.favorite().getProductId()).isEqualTo(carpa.getId());
-        assertThat(result.product().name()).isEqualTo("Carpa");
-        assertThat(result.product().slug()).isEqualTo("carpa");
-        assertThat(result.product().active()).isTrue();
+        assertThat(result.product().getName()).isEqualTo("Carpa");
+        assertThat(result.product().getSlug()).isEqualTo("carpa");
+        assertThat(result.product().isActive()).isTrue();
         assertThat(result.favorite().getCreatedAt()).isNotNull();
     }
 
@@ -87,10 +87,10 @@ class FavoriteServiceTest {
 
         PageResult<FavoriteProduct> result = favoriteService.list(USER_ID, new PageQuery(0, 20));
 
-        assertThat(result.content()).extracting(item -> item.product().name()).containsExactly("Mochila", "Carpa");
+        assertThat(result.content()).extracting(item -> item.product().getName()).containsExactly("Mochila", "Carpa");
         assertThat(result.totalElements()).isEqualTo(2L);
-        assertThat(products.count("findSummariesById")).isEqualTo(1);
-        assertThat(products.count("findSummaryById")).isZero();
+        assertThat(products.count("findAllById")).isEqualTo(1);
+        assertThat(products.count("findById")).isZero();
     }
 
     @Test

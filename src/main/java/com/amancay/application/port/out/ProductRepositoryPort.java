@@ -23,6 +23,9 @@ public interface ProductRepositoryPort {
 
     List<ProductSummary> findSummariesById(Collection<UUID> ids);
 
+    // Productos completos en una sola carga, sin orden garantizado; los ids inexistentes se omiten.
+    List<Product> findAllById(Collection<UUID> ids);
+
     boolean existsBySlug(String slug);
 
     boolean existsBySlugAndIdNot(String slug, UUID id);
