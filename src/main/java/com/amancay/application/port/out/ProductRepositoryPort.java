@@ -17,11 +17,14 @@ public interface ProductRepositoryPort {
 
     boolean existsById(UUID id);
 
-    PageResult<ProductSummary> findSummaries(ProductFilter filter, ProductSort sort, PageQuery page);
+    PageResult<Product> findPage(ProductFilter filter, ProductSort sort, PageQuery page);
 
     Optional<ProductSummary> findSummaryById(UUID id);
 
     List<ProductSummary> findSummariesById(Collection<UUID> ids);
+
+    // Productos completos en una sola carga, sin orden garantizado; los ids inexistentes se omiten.
+    List<Product> findAllById(Collection<UUID> ids);
 
     boolean existsBySlug(String slug);
 
