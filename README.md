@@ -98,6 +98,28 @@ Swagger UI está disponible en `/swagger-ui/index.html` y el contrato adicional 
 
 Perfil (`/api/me`), direcciones (`/api/me/addresses`), favoritos (`/api/me/favorites`), reseñas (`/api/products/{id}/reviews`, `/api/reviews/{id}`, `/api/me/reviews`) y administración (`/api/admin/**`, solo ADMIN). Todos los endpoints están en Swagger UI.
 
+## Envíos
+
+El costo de envío se calcula con servicios gratuitos de OpenStreetMap, que no requieren API key: **Nominatim** convierte la dirección en coordenadas y **OSRM** calcula la distancia en auto desde el depósito.
+
+```text
+costo = SHIPPING_BASE_COST + km * SHIPPING_COST_PER_KM
+```
+
+- `GET /api/orders/shipping-quote?addressId=...` devuelve `{ "distanceKm": 11.1, "cost": 10.54 }` para mostrar en el checkout.
+- `POST /api/orders` vuelve a cotizar y guarda el resultado en `shippingCost` (el `total` ya lo incluye).
+- Si la dirección no se encuentra o el servicio no responde, se devuelve `503` y la orden no se crea.
+
+| Variable               | Default    | Descripción                    |
+|------------------------|------------|--------------------------------|
+| `SHIPPING_ORIGIN_LAT`  | `-34.6170` | Latitud del depósito (UADE).   |
+| `SHIPPING_ORIGIN_LON`  | `-58.3817` | Longitud del depósito.         |
+| `SHIPPING_BASE_COST`   | `5.00`     | Costo fijo por envío.          |
+| `SHIPPING_COST_PER_KM` | `0.50`     | Costo por kilómetro recorrido. |
+| `SHIPPING_COUNTRY_CODES` | `ar`     | Países donde se buscan las direcciones (ISO, separados por coma). Fuera de ellos la cotización falla. |
+
+Los servidores públicos de Nominatim y OSRM sirven para desarrollo y demos (Nominatim permite ~1 request por segundo), no para producción.
+
 ## Autenticación
 
 El login y el registro ocurren en **Supabase Auth** (desde el front). El backend no tiene endpoints de login: actúa como *resource server* y valida en cada request el JWT que emite Supabase, enviado como `Authorization: Bearer <access_token>`.
