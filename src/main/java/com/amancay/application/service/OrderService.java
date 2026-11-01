@@ -14,6 +14,7 @@ import com.amancay.application.port.in.CreateOrderUseCase;
 import com.amancay.application.port.in.GetOrderQuery;
 import com.amancay.application.port.in.ListOrdersQuery;
 import com.amancay.application.port.in.MarkOrderAsPaidUseCase;
+import com.amancay.application.port.in.QuoteShippingQuery;
 import com.amancay.application.port.out.LoadProductVariantPort.ProductVariantInfo;
 import com.amancay.application.port.out.LoadProductVariantPort;
 import com.amancay.application.port.out.LoadRequesterPort.Requester;
@@ -21,6 +22,7 @@ import com.amancay.application.port.out.LoadRequesterPort;
 import com.amancay.application.port.out.LoadShippingAddressPort;
 import com.amancay.application.port.out.OrderRepositoryPort;
 import com.amancay.application.port.out.PublishOrderEventPort;
+import com.amancay.application.port.out.ShippingQuotePort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
 import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.OrderAccessDeniedException;
@@ -29,26 +31,30 @@ import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderItem;
 import com.amancay.domain.model.OrderStatus;
 import com.amancay.domain.model.ShippingAddress;
+import com.amancay.domain.model.ShippingQuote;
 
 @Service
 public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCase, MarkOrderAsPaidUseCase, GetOrderQuery,
-        ListOrdersQuery {
+        ListOrdersQuery, QuoteShippingQuery {
 
     private final OrderRepositoryPort orderRepository;
     private final LoadProductVariantPort loadProductVariantPort;
     private final LoadShippingAddressPort loadShippingAddressPort;
     private final LoadRequesterPort loadRequesterPort;
     private final PublishOrderEventPort publishOrderEventPort;
+    private final ShippingQuotePort shippingQuotePort;
     private final AdminGuard adminGuard;
 
     public OrderService(OrderRepositoryPort orderRepository,
             LoadProductVariantPort loadProductVariantPort, LoadShippingAddressPort loadShippingAddressPort,
-            LoadRequesterPort loadRequesterPort, PublishOrderEventPort publishOrderEventPort, AdminGuard adminGuard) {
+            LoadRequesterPort loadRequesterPort, PublishOrderEventPort publishOrderEventPort,
+            ShippingQuotePort shippingQuotePort, AdminGuard adminGuard) {
         this.orderRepository = orderRepository;
         this.loadProductVariantPort = loadProductVariantPort;
         this.loadShippingAddressPort = loadShippingAddressPort;
         this.loadRequesterPort = loadRequesterPort;
         this.publishOrderEventPort = publishOrderEventPort;
+        this.shippingQuotePort = shippingQuotePort;
         this.adminGuard = adminGuard;
     }
 
@@ -86,9 +92,7 @@ public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCas
     @Override
     @Transactional
     public Order create(CreateOrderCommand command) {
-        ShippingAddress shippingAddress = loadShippingAddressPort.findById(command.shippingAddressId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Shipping address not found: " + command.shippingAddressId()));
+        ShippingAddress shippingAddress = findShippingAddress(command.shippingAddressId());
 
         List<OrderItem> items = new ArrayList<>();
         for (CreateOrderCommand.Item itemCommand : command.items()) {
@@ -101,8 +105,16 @@ public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCas
             items.add(OrderItem.create(variant.id(), itemCommand.quantity(), variant.price()));
         }
 
-        Order order = Order.create(command.requesterId(), command.shippingAddressId(), shippingAddress, items);
+        // Se cotiza al final para no llamar al servicio externo si el pedido ya es invalido.
+        ShippingQuote shippingQuote = shippingQuotePort.quote(shippingAddress);
+        Order order = Order.create(command.requesterId(), command.shippingAddressId(), shippingAddress, items,
+                shippingQuote.cost());
         return orderRepository.save(order);
+    }
+
+    @Override
+    public ShippingQuote quote(UUID shippingAddressId) {
+        return shippingQuotePort.quote(findShippingAddress(shippingAddressId));
     }
 
     @Override
@@ -137,6 +149,11 @@ public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCas
             throw new OrderAccessDeniedException("No puedes consultar órdenes de otro usuario");
         }
         return requesterId;
+    }
+
+    private ShippingAddress findShippingAddress(UUID addressId) {
+        return loadShippingAddressPort.findById(addressId)
+                .orElseThrow(() -> new IllegalArgumentException("Shipping address not found: " + addressId));
     }
 
     private Order findOrder(UUID id) {

@@ -22,19 +22,27 @@ class OrderTest {
     }
 
     @Test
-    void createComputesSubtotalAndTotalFromItems() {
+    void createComputesSubtotalAndTotalFromItemsAndShipping() {
         Order order = Order.create(UUID.randomUUID(), UUID.randomUUID(), OrderFixtures.ADDRESS, List.of(
                 OrderItem.create(UUID.randomUUID(), 2, new BigDecimal("50.00")),
-                OrderItem.create(UUID.randomUUID(), 1, new BigDecimal("25.50"))));
+                OrderItem.create(UUID.randomUUID(), 1, new BigDecimal("25.50"))), new BigDecimal("9.75"));
 
         assertThat(order.getSubtotal()).isEqualByComparingTo("125.50");
-        assertThat(order.getShippingCost()).isEqualByComparingTo("0");
-        assertThat(order.getTotal()).isEqualByComparingTo("125.50");
+        assertThat(order.getShippingCost()).isEqualByComparingTo("9.75");
+        assertThat(order.getTotal()).isEqualByComparingTo("135.25");
     }
 
     @Test
     void createRejectsAnOrderWithoutItems() {
-        assertThatThrownBy(() -> Order.create(UUID.randomUUID(), UUID.randomUUID(), OrderFixtures.ADDRESS, List.of()))
+        assertThatThrownBy(() -> Order.create(UUID.randomUUID(), UUID.randomUUID(), OrderFixtures.ADDRESS, List.of(),
+                BigDecimal.ZERO))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void createRejectsNegativeShippingCost() {
+        assertThatThrownBy(() -> Order.create(UUID.randomUUID(), UUID.randomUUID(), OrderFixtures.ADDRESS,
+                List.of(OrderItem.create(UUID.randomUUID(), 1, BigDecimal.TEN)), new BigDecimal("-1")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -45,12 +45,14 @@ public class Order {
     }
 
     public static Order create(UUID userId, UUID shippingAddressId, ShippingAddress shippingAddress,
-            List<OrderItem> items) {
+            List<OrderItem> items, BigDecimal shippingCost) {
         if (items == null || items.isEmpty()) {
             throw new IllegalArgumentException("An order needs at least one item");
         }
+        if (shippingCost == null || shippingCost.signum() < 0) {
+            throw new IllegalArgumentException("shippingCost must be zero or positive");
+        }
         BigDecimal subtotal = items.stream().map(OrderItem::subtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal shippingCost = BigDecimal.ZERO;
         return new Order(null, userId, shippingAddressId, shippingAddress, OrderStatus.CREADO, subtotal, shippingCost,
                 subtotal.add(shippingCost), null, null, items, List.of());
     }

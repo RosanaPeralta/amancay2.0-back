@@ -23,18 +23,21 @@ import com.amancay.application.port.out.LoadRequesterPort;
 import com.amancay.application.port.out.LoadShippingAddressPort;
 import com.amancay.application.port.out.OrderRepositoryPort;
 import com.amancay.application.port.out.PublishOrderEventPort;
+import com.amancay.application.port.out.ShippingQuotePort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
 import com.amancay.domain.exception.AdminRequiredException;
 import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
 import com.amancay.domain.exception.OrderAccessDeniedException;
 import com.amancay.domain.exception.OrderNotFoundException;
+import com.amancay.domain.exception.ShippingQuoteUnavailableException;
 import com.amancay.domain.exception.UserNotFoundException;
 import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderFixtures;
 import com.amancay.domain.model.OrderStatus;
 import com.amancay.domain.model.OrderStatusChange;
 import com.amancay.domain.model.ShippingAddress;
+import com.amancay.domain.model.ShippingQuote;
 
 // Sin Mockito ni Spring: cada puerto de salida se reemplaza por un fake en memoria.
 class OrderServiceTest {
@@ -44,6 +47,8 @@ class OrderServiceTest {
     private final Map<UUID, ShippingAddress> addresses = new HashMap<>();
     private final Map<UUID, LoadRequesterPort.Requester> users = new HashMap<>();
     private final List<OrderStatusChangedEvent> publishedEvents = new ArrayList<>();
+    private final List<ShippingAddress> quotedAddresses = new ArrayList<>();
+    private boolean shippingUnavailable;
 
     private OrderService orderService;
 
@@ -54,7 +59,14 @@ class OrderServiceTest {
         LoadRequesterPort requesterPort = id -> Optional.ofNullable(users.get(id))
                 .orElseThrow(() -> new UserNotFoundException(id));
         PublishOrderEventPort eventPort = publishedEvents::add;
-        orderService = new OrderService(orders, variantPort, addressPort, requesterPort, eventPort,
+        ShippingQuotePort shippingPort = destination -> {
+            if (shippingUnavailable) {
+                throw new ShippingQuoteUnavailableException("down");
+            }
+            quotedAddresses.add(destination);
+            return new ShippingQuote(new BigDecimal("15.0"), new BigDecimal("12.50"));
+        };
+        orderService = new OrderService(orders, variantPort, addressPort, requesterPort, eventPort, shippingPort,
                 new AdminGuard(requesterPort));
     }
 
@@ -69,11 +81,41 @@ class OrderServiceTest {
         assertThat(result.getId()).isNotNull();
         assertThat(result.getUserId()).isEqualTo(buyerId);
         assertThat(result.getStatus()).isEqualTo(OrderStatus.CREADO);
-        assertThat(result.getTotal()).isEqualByComparingTo("100.00");
+        assertThat(result.getSubtotal()).isEqualByComparingTo("100.00");
+        assertThat(result.getShippingCost()).isEqualByComparingTo("12.50");
+        assertThat(result.getTotal()).isEqualByComparingTo("112.50");
         assertThat(result.getItems()).singleElement()
                 .satisfies(item -> assertThat(item.unitPrice()).isEqualByComparingTo("50.00"));
         assertThat(result.getShippingAddress()).isEqualTo(addresses.get(addressId));
         assertThat(orders.findById(result.getId())).isPresent();
+    }
+
+    @Test
+    void createOrderFailsWithoutSavingWhenShippingCannotBeQuoted() {
+        UUID buyerId = buyer();
+        UUID variantId = variant("50.00", 10);
+        shippingUnavailable = true;
+
+        assertThatThrownBy(() -> orderService.create(command(buyerId, address(), variantId, 1)))
+                .isInstanceOf(ShippingQuoteUnavailableException.class);
+        assertThat(orders.findByUserId(buyerId)).isEmpty();
+    }
+
+    @Test
+    void quoteUsesTheShippingAddressSnapshot() {
+        UUID addressId = address();
+
+        ShippingQuote quote = orderService.quote(addressId);
+
+        assertThat(quote.cost()).isEqualByComparingTo("12.50");
+        assertThat(quotedAddresses).containsExactly(addresses.get(addressId));
+    }
+
+    @Test
+    void quoteFailsWhenAddressDoesNotExist() {
+        assertThatThrownBy(() -> orderService.quote(UUID.randomUUID()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("Shipping address not found");
     }
 
     @Test

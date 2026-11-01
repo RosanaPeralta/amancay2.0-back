@@ -31,6 +31,7 @@ import com.amancay.domain.exception.ProductNotFoundException;
 import com.amancay.domain.exception.PurchaseRequiredException;
 import com.amancay.domain.exception.ReviewNotFoundException;
 import com.amancay.domain.exception.SelfRoleChangeException;
+import com.amancay.domain.exception.ShippingQuoteUnavailableException;
 import com.amancay.domain.exception.UserNotFoundException;
 
 @RestControllerAdvice
@@ -150,6 +151,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(InsufficientStockException.class)
     public ResponseEntity<Map<String, String>> handleInsufficientStock(InsufficientStockException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(ShippingQuoteUnavailableException.class)
+    public ResponseEntity<Map<String, String>> handleShippingQuoteUnavailable(
+            ShippingQuoteUnavailableException exception) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("error", exception.getMessage()));
     }
 
     @ExceptionHandler(PaymentNotFoundException.class)
