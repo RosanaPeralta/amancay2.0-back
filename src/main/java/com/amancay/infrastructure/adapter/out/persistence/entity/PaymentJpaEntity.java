@@ -52,6 +52,13 @@ public class PaymentJpaEntity {
     @Column(name = "transfer_reference")
     private String transferReference;
 
+    // Solo MERCADO_PAGO: id del pago en Mercado Pago. UNIQUE en la base (sql/mercadopago.sql).
+    @Column(name = "external_id", length = 64)
+    private String externalId;
+
+    @Column(name = "checkout_url", length = 512)
+    private String checkoutUrl;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

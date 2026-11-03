@@ -71,6 +71,40 @@ class PaymentTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test
+    void attemptKeepsTheMercadoPagoCheckoutUrl() {
+        Payment payment = Payment.attempt(UUID.randomUUID(), BigDecimal.TEN, PaymentMethod.MERCADO_PAGO,
+                PaymentResult.awaitingCheckout("https://mp.test/checkout"));
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDIENTE);
+        assertThat(payment.getCheckoutUrl()).isEqualTo("https://mp.test/checkout");
+    }
+
+    @Test
+    void providerApprovalStoresTheMercadoPagoPaymentId() {
+        Payment payment = payment(PaymentMethod.MERCADO_PAGO, PaymentStatus.PENDIENTE);
+
+        payment.approveFromProvider("mp-123");
+
+        assertThat(payment.isApproved()).isTrue();
+        assertThat(payment.getExternalId()).isEqualTo("mp-123");
+    }
+
+    @Test
+    void providerApprovalOnlyAppliesToMercadoPagoPayments() {
+        Payment payment = payment(PaymentMethod.TRANSFERENCIA, PaymentStatus.PENDIENTE);
+
+        assertThatThrownBy(() -> payment.approveFromProvider("mp-123")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void providerApprovalRejectsAnAlreadyDecidedPayment() {
+        Payment payment = payment(PaymentMethod.MERCADO_PAGO, PaymentStatus.RECHAZADO);
+
+        assertThatThrownBy(() -> payment.approveFromProvider("mp-123")).isInstanceOf(IllegalStateException.class);
+        assertThat(payment.getExternalId()).isNull();
+    }
+
     private Payment payment(PaymentMethod method, PaymentStatus status) {
         return new Payment(UUID.randomUUID(), UUID.randomUUID(), BigDecimal.TEN, method, status, null, null, null);
     }

@@ -17,6 +17,7 @@ import com.amancay.application.port.in.AttachTransferReferenceUseCase;
 import com.amancay.application.port.in.CreatePaymentUseCase;
 import com.amancay.application.port.in.ListOrderPaymentsQuery;
 import com.amancay.application.port.in.RetryPaymentUseCase;
+import com.amancay.application.port.in.VerifyPaymentUseCase;
 import com.amancay.infrastructure.adapter.in.web.dto.AttachTransferReferenceRequest;
 import com.amancay.infrastructure.adapter.in.web.dto.CreatePaymentRequest;
 import com.amancay.infrastructure.adapter.in.web.dto.PaymentResponse;
@@ -32,13 +33,16 @@ public class PaymentController {
     private final CreatePaymentUseCase createPaymentUseCase;
     private final RetryPaymentUseCase retryPaymentUseCase;
     private final AttachTransferReferenceUseCase attachTransferReferenceUseCase;
+    private final VerifyPaymentUseCase verifyPaymentUseCase;
 
     public PaymentController(ListOrderPaymentsQuery listOrderPaymentsQuery, CreatePaymentUseCase createPaymentUseCase,
-            RetryPaymentUseCase retryPaymentUseCase, AttachTransferReferenceUseCase attachTransferReferenceUseCase) {
+            RetryPaymentUseCase retryPaymentUseCase, AttachTransferReferenceUseCase attachTransferReferenceUseCase,
+            VerifyPaymentUseCase verifyPaymentUseCase) {
         this.listOrderPaymentsQuery = listOrderPaymentsQuery;
         this.createPaymentUseCase = createPaymentUseCase;
         this.retryPaymentUseCase = retryPaymentUseCase;
         this.attachTransferReferenceUseCase = attachTransferReferenceUseCase;
+        this.verifyPaymentUseCase = verifyPaymentUseCase;
     }
 
     @GetMapping("/api/orders/{orderId}/payments")
@@ -75,5 +79,14 @@ public class PaymentController {
             @Valid @RequestBody AttachTransferReferenceRequest request) {
         return ResponseEntity.ok(PaymentResponse.from(attachTransferReferenceUseCase
                 .attachTransferReference(loggedUser.id(), paymentId, request.transferReference())));
+    }
+
+    // El front lo llama al volver del checkout de Mercado Pago. Si sigue PENDIENTE, devuelve
+    // el pago sin cambios (el comprador no termino de pagar o Mercado Pago todavia no lo aprobo).
+    @PostMapping("/api/payments/{paymentId}/verify")
+    public ResponseEntity<PaymentResponse> verify(
+            @AuthenticationPrincipal LoggedUser loggedUser,
+            @PathVariable UUID paymentId) {
+        return ResponseEntity.ok(PaymentResponse.from(verifyPaymentUseCase.verify(loggedUser.id(), paymentId)));
     }
 }
