@@ -1,6 +1,7 @@
 package com.amancay.infrastructure.adapter.out.mercadopago;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,10 +52,13 @@ public class MercadoPagoClient implements MercadoPagoCheckout, PaymentProviderPo
         body.put("items", List.of(item));
         // Con esto se vuelve a encontrar la orden desde el pago (webhook o verificacion).
         body.put("external_reference", orderId);
-        body.put("back_urls", Map.of("success", returnUrl, "failure", returnUrl, "pending", returnUrl));
-        // Mercado Pago solo acepta auto_return con una URL publica (https), no con localhost.
-        if (returnUrl.startsWith("https://")) {
-            body.put("auto_return", "approved");
+        // Mercado Pago no redirige a localhost/127.0.0.1: en ese caso no se mandan back_urls y
+        // el front abre el checkout en otra pestaña y espera el pago (ver MERCADOPAGO.md).
+        if (!isLocal(returnUrl)) {
+            body.put("back_urls", Map.of("success", returnUrl, "failure", returnUrl, "pending", returnUrl));
+            if (returnUrl.startsWith("https://")) {
+                body.put("auto_return", "approved");
+            }
         }
         if (properties.hasNotificationUrl()) {
             body.put("notification_url", properties.notificationUrl());
@@ -134,6 +138,11 @@ public class MercadoPagoClient implements MercadoPagoCheckout, PaymentProviderPo
 
     private static String asString(Object value) {
         return value == null ? null : value.toString();
+    }
+
+    private static boolean isLocal(String url) {
+        String host = URI.create(url).getHost();
+        return host == null || host.equals("localhost") || host.equals("127.0.0.1");
     }
 
     private static String shortId(UUID id) {

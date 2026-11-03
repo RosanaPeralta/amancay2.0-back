@@ -29,7 +29,7 @@ Front                         Backend                              Mercado Pago
   |                             |   = id de la orden) ----------------->|
   |<----------------------------| Payment PENDIENTE + checkoutUrl       |
   | redirige a checkoutUrl ------------------------------------------->| el comprador paga
-  |<--------------------------------------------- vuelve a /checkout/resultado?...
+  |<-------------- vuelve a /checkout/resultado?... (en localhost: la pestaña original espera)
   | POST /api/payments/{paymentId}/verify                              |
   |---------------------------->| GET /v1/payments/search ------------>|
   |                             | aprobado -> Payment APROBADO,         |
@@ -75,8 +75,10 @@ MP_WEBHOOK_SECRET=<clave secreta de Webhooks en el panel>
 
 - Sin `MP_NOTIFICATION_URL` no se pide webhook y funciona solo la verificación.
 - `?source_news=webhooks` evita que además lleguen las notificaciones IPN viejas.
-- Con `MP_FRONTEND_URL` en `http://localhost`, Mercado Pago no redirige solo al terminar
-  (`auto_return` requiere https): el comprador vuelve con el botón "Volver al sitio".
+- Mercado Pago no redirige a `localhost` ni a `127.0.0.1`. Con `MP_FRONTEND_URL` en localhost el
+  backend no manda URLs de retorno y el front abre el checkout en **otra pestaña**: la tienda queda
+  en `/checkout/resultado?espera=1` y detecta sola el pago (consulta cada 3 segundos). Con una URL
+  pública (por ejemplo un túnel https al front) vuelve a redirigir en la misma pestaña.
 - Sin `MP_WEBHOOK_SECRET` la firma no se valida (se avisa en el log al arrancar). Sigue siendo
   seguro porque el pago se vuelve a leer de la API de Mercado Pago.
 
