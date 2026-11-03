@@ -2,7 +2,12 @@ package com.amancay.domain.model;
 
 // Lo que devuelve una estrategia de cobro. reason no se persiste: solo viaja en la
 // respuesta del intento, para que el front pueda mostrar por que se rechazo.
-public record PaymentResult(PaymentStatus status, String reason) {
+// checkoutUrl solo aplica a MERCADO_PAGO: adonde redirigir al comprador para pagar.
+public record PaymentResult(PaymentStatus status, String reason, String checkoutUrl) {
+
+    public PaymentResult(PaymentStatus status, String reason) {
+        this(status, reason, null);
+    }
 
     public static PaymentResult approved() {
         return new PaymentResult(PaymentStatus.APROBADO, null);
@@ -14,5 +19,9 @@ public record PaymentResult(PaymentStatus status, String reason) {
 
     public static PaymentResult pending(String reason) {
         return new PaymentResult(PaymentStatus.PENDIENTE, reason);
+    }
+
+    public static PaymentResult awaitingCheckout(String checkoutUrl) {
+        return new PaymentResult(PaymentStatus.PENDIENTE, "Awaiting payment in Mercado Pago checkout", checkoutUrl);
     }
 }

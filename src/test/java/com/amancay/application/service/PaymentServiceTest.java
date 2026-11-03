@@ -23,6 +23,8 @@ import com.amancay.application.port.in.ListPendingPaymentsQuery.PendingPayment;
 import com.amancay.application.port.in.PaymentOutcome;
 import com.amancay.application.port.out.PayableOrderPort.PayableOrder;
 import com.amancay.application.port.out.PayableOrderPort;
+import com.amancay.application.port.out.PaymentProviderPort;
+import com.amancay.application.port.out.PaymentProviderPort.ProviderPayment;
 import com.amancay.application.port.out.PaymentRepositoryPort;
 import com.amancay.application.port.out.StockPort;
 import com.amancay.application.service.fake.Admins;
@@ -45,6 +47,7 @@ class PaymentServiceTest {
     private final InMemoryPayments payments = new InMemoryPayments();
     private final FakeOrders orders = new FakeOrders();
     private final FakeStock stock = new FakeStock();
+    private final FakeProvider provider = new FakeProvider();
     private final Map<UUID, String> emails = new HashMap<>();
     private PaymentResult nextProcessorResult = PaymentResult.approved();
     private final List<PaymentDetails> processedDetails = new ArrayList<>();
@@ -58,6 +61,7 @@ class PaymentServiceTest {
                     processedDetails.add(details);
                     return nextProcessorResult;
                 },
+                provider,
                 stock,
                 userIds -> {
                     Map<UUID, String> found = new HashMap<>();
@@ -321,6 +325,114 @@ class PaymentServiceTest {
         assertThat(paymentService.listPending(ADMIN_ID)).isEmpty();
     }
 
+    @Test
+    void approvedMercadoPagoNotificationApprovesThePendingPaymentAndFulfillsTheOrder() {
+        UUID variantId = UUID.randomUUID();
+        stock.set(variantId, 4);
+        PayableOrder order = orders.create(REQUESTER_ID, "200", new PayableOrder.Line(variantId, 1));
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "approved", "200", order.id());
+
+        paymentService.syncFromProvider("mp-1");
+
+        Payment saved = payments.findById(pending.getId()).orElseThrow();
+        assertThat(saved.getStatus()).isEqualTo(PaymentStatus.APROBADO);
+        assertThat(saved.getExternalId()).isEqualTo("mp-1");
+        assertThat(orders.paid).containsExactly(order.id());
+        assertThat(stock.of(variantId)).isEqualTo(3);
+    }
+
+    @Test
+    void repeatedMercadoPagoNotificationIsAppliedOnlyOnce() {
+        UUID variantId = UUID.randomUUID();
+        stock.set(variantId, 4);
+        PayableOrder order = orders.create(REQUESTER_ID, "200", new PayableOrder.Line(variantId, 1));
+        payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "approved", "200", order.id());
+
+        paymentService.syncFromProvider("mp-1");
+        paymentService.syncFromProvider("mp-1");
+
+        assertThat(orders.paid).containsExactly(order.id());
+        assertThat(stock.of(variantId)).isEqualTo(3);
+    }
+
+    @Test
+    void notApprovedMercadoPagoPaymentLeavesThePaymentPending() {
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "rejected", "200", order.id());
+
+        paymentService.syncFromProvider("mp-1");
+
+        assertThat(payments.findById(pending.getId()).orElseThrow().getStatus()).isEqualTo(PaymentStatus.PENDIENTE);
+        assertThat(orders.paid).isEmpty();
+    }
+
+    @Test
+    void mercadoPagoPaymentWithAnotherAmountIsLeftForTheAdmin() {
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "approved", "150", order.id());
+
+        paymentService.syncFromProvider("mp-1");
+
+        assertThat(payments.findById(pending.getId()).orElseThrow().getStatus()).isEqualTo(PaymentStatus.PENDIENTE);
+        assertThat(orders.paid).isEmpty();
+    }
+
+    @Test
+    void notificationForAnUnknownMercadoPagoPaymentIsIgnored() {
+        paymentService.syncFromProvider("does-not-exist");
+
+        assertThat(orders.paid).isEmpty();
+    }
+
+    @Test
+    void buyerVerificationApprovesAPaymentAlreadyApprovedInMercadoPago() {
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "approved", "200", order.id());
+
+        Payment result = paymentService.verify(REQUESTER_ID, pending.getId());
+
+        assertThat(result.getStatus()).isEqualTo(PaymentStatus.APROBADO);
+        assertThat(result.getExternalId()).isEqualTo("mp-1");
+        assertThat(orders.paid).containsExactly(order.id());
+    }
+
+    @Test
+    void verificationKeepsThePaymentPendingWhileMercadoPagoHasNotApprovedIt() {
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "in_process", "200", order.id());
+
+        Payment result = paymentService.verify(REQUESTER_ID, pending.getId());
+
+        assertThat(result.getStatus()).isEqualTo(PaymentStatus.PENDIENTE);
+        assertThat(orders.paid).isEmpty();
+    }
+
+    @Test
+    void cannotVerifyAnotherUsersPayment() {
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "approved", "200", order.id());
+
+        assertThatThrownBy(() -> paymentService.verify(REQUESTER_ID, pending.getId()))
+                .isInstanceOf(OrderAccessDeniedException.class);
+        assertThat(orders.paid).isEmpty();
+    }
+
+    @Test
+    void onlyMercadoPagoPaymentsCanBeVerified() {
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
+
+        assertThatThrownBy(() -> paymentService.verify(REQUESTER_ID, pending.getId()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     private PaymentDetails card() {
         return new PaymentDetails(PaymentMethod.TARJETA_CREDITO,
                 new PaymentDetails.CardData("4111111111111234", "Test User", "12/30", "123"));
@@ -361,20 +473,47 @@ class PaymentServiceTest {
         }
 
         @Override
+        public Optional<Payment> findByExternalId(String externalId) {
+            return store.values().stream().filter(payment -> externalId.equals(payment.getExternalId())).findFirst()
+                    .map(InMemoryPayments::copy);
+        }
+
+        @Override
         public Payment save(Payment payment) {
             clock = clock.plusSeconds(1);
             UUID id = payment.getId() == null ? UUID.randomUUID() : payment.getId();
             Payment saved = new Payment(id, payment.getOrderId(), payment.getAmount(), payment.getMethod(),
-                    payment.getStatus(), payment.getTransferReference(),
-                    payment.getCreatedAt() == null ? clock : payment.getCreatedAt(), clock);
+                    payment.getStatus(), payment.getTransferReference(), payment.getExternalId(),
+                    payment.getCheckoutUrl(), payment.getCreatedAt() == null ? clock : payment.getCreatedAt(), clock);
             store.put(id, saved);
             return copy(saved);
         }
 
         private static Payment copy(Payment payment) {
             return new Payment(payment.getId(), payment.getOrderId(), payment.getAmount(), payment.getMethod(),
-                    payment.getStatus(), payment.getTransferReference(), payment.getCreatedAt(),
-                    payment.getUpdatedAt());
+                    payment.getStatus(), payment.getTransferReference(), payment.getExternalId(),
+                    payment.getCheckoutUrl(), payment.getCreatedAt(), payment.getUpdatedAt());
+        }
+    }
+
+    // Imita a Mercado Pago: pagos por id, buscables por external_reference (id de la orden).
+    private static final class FakeProvider implements PaymentProviderPort {
+
+        private final Map<String, ProviderPayment> store = new LinkedHashMap<>();
+
+        void add(String id, String status, String amount, UUID orderId) {
+            store.put(id, new ProviderPayment(id, status, new BigDecimal(amount), orderId.toString()));
+        }
+
+        @Override
+        public Optional<ProviderPayment> findPayment(String providerPaymentId) {
+            return Optional.ofNullable(store.get(providerPaymentId));
+        }
+
+        @Override
+        public List<ProviderPayment> findPaymentsByExternalReference(String externalReference) {
+            return store.values().stream().filter(payment -> externalReference.equals(payment.externalReference()))
+                    .toList();
         }
     }
 
