@@ -117,6 +117,26 @@ Perfil (`/api/me`), direcciones (`/api/me/addresses`), favoritos (`/api/me/favor
 | `AI_MODEL`                           | `openai/gpt-oss-120b`   | Modelo a usar.                                |
 | `AMANCAY_RECOMMENDATIONS_CACHE_TTL`  | `PT30M`                     | Vigencia del ranking cacheado (ISO-8601).     |
 
+## Integracion con mercado pago
+1. En [Tus integraciones](https://www.mercadopago.com.ar/developers/panel/app) crear una
+   aplicación con Checkout Pro.
+2. En **Cuentas de prueba** crear (si no existen) una cuenta **vendedor** y una **comprador**
+   de Argentina, la del comprador con saldo ficticio.
+3. En **Credenciales de prueba** copiar el *Access Token* para `MP_ACCESS_TOKEN`.
+4. Para pagar en el checkout, iniciar sesión con el usuario COMPRADOR de prueba (conviene
+   una ventana de incógnito, para no usar tu cuenta real).
+  
+- **`Variables MP`**: en `.env` MP_ACCESS_TOKEN=TEST-xxxxxxxxxxxxxxxx y MP_FRONTEND_URL=http://localhost:5173
+
+| Método | Ruta | Quién | Qué hace |
+|---|---|---|---|
+| POST | `/api/orders/{orderId}/payments` con `{"method":"MERCADO_PAGO"}` | comprador | Crea el pago `PENDIENTE` y devuelve `checkoutUrl` |
+| POST | `/api/payments/{paymentId}/verify` | comprador | Revisa en Mercado Pago y, si está aprobado, aprueba el pago. Devuelve el pago |
+| POST | `/api/webhooks/mercadopago` | Mercado Pago | Webhook. Público, validado con `x-signature` |
+
+`PaymentResponse` suma dos campos: `checkoutUrl` (adonde redirigir) y `externalId` (id del pago
+en Mercado Pago, una vez aprobado).
+
 ## Autenticación
 
 El login y el registro ocurren en **Supabase Auth** (desde el front). El backend no tiene endpoints de login: actúa como *resource server* y valida en cada request el JWT que emite Supabase, enviado como `Authorization: Bearer <access_token>`.
