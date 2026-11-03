@@ -50,20 +50,20 @@ public class InMemoryProductRepository implements ProductRepositoryPort {
     }
 
     @Override
-    public PageResult<ProductSummary> findSummaries(ProductFilter filter, ProductSort sort, PageQuery page) {
-        Comparator<ProductSummary> order = switch (sort) {
-            case NAME -> Comparator.comparing(ProductSummary::name);
-            case NAME_DESC -> Comparator.comparing(ProductSummary::name).reversed();
-            case NEWEST -> Comparator.comparing(ProductSummary::createdAt).reversed()
-                    .thenComparing(ProductSummary::name);
+    public PageResult<Product> findPage(ProductFilter filter, ProductSort sort, PageQuery page) {
+        Comparator<Product> order = switch (sort) {
+            case NAME -> Comparator.comparing(Product::getName);
+            case NAME_DESC -> Comparator.comparing(Product::getName).reversed();
+            case NEWEST -> Comparator.comparing(Product::getCreatedAt).reversed()
+                    .thenComparing(Product::getName);
         };
         return Pages.of(store.values().stream()
                 .filter(p -> filter.name() == null
                         || p.getName().toLowerCase(Locale.ROOT).contains(filter.name().toLowerCase(Locale.ROOT)))
                 .filter(p -> filter.categoryId() == null || p.getCategoryIds().contains(filter.categoryId()))
                 .filter(p -> filter.active() == null || p.isActive() == filter.active())
-                .map(Product::toSummary)
                 .sorted(order)
+                .map(InMemoryProductRepository::copy)
                 .toList(), page);
     }
 
@@ -77,6 +77,12 @@ public class InMemoryProductRepository implements ProductRepositoryPort {
     public List<ProductSummary> findSummariesById(Collection<UUID> ids) {
         calls.add("findSummariesById");
         return ids.stream().map(store::get).filter(p -> p != null).map(Product::toSummary).toList();
+    }
+
+    @Override
+    public List<Product> findAllById(Collection<UUID> ids) {
+        calls.add("findAllById");
+        return ids.stream().map(store::get).filter(p -> p != null).map(InMemoryProductRepository::copy).toList();
     }
 
     @Override

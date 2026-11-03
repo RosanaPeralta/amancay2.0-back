@@ -14,7 +14,7 @@ paths:
         - {name: is_active, in: query, schema: {type: boolean}}
         - {name: sort, in: query, schema: {type: string, enum: [name, name_desc, newest], default: name}}
       responses:
-        '200': {description: Product page}
+        '200': {description: Product page; each item is a full Product (variants, images, categoryIds, discount)}
     post:
       summary: Create a product with variants
       requestBody:
