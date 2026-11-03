@@ -23,7 +23,6 @@ import com.amancay.domain.model.PageResult;
 import com.amancay.domain.model.Product;
 import com.amancay.domain.model.ProductFilter;
 import com.amancay.domain.model.ProductSort;
-import com.amancay.domain.model.ProductSummary;
 import com.amancay.domain.model.ProductVariant;
 
 class ProductServiceTest {
@@ -120,10 +119,10 @@ class ProductServiceTest {
         products.create("Coffee beans", "coffee-beans", false, Set.of(category));
         products.create("Tea", "tea", true, Set.of());
 
-        PageResult<ProductSummary> result = productService.list(new ProductFilter(" co ", category, true),
+        PageResult<Product> result = productService.list(new ProductFilter(" co ", category, true),
                 ProductSort.NAME_DESC, new PageQuery(0, 12));
 
-        assertThat(result.content()).extracting(ProductSummary::name).containsExactly("Coffee", "Cocoa");
+        assertThat(result.content()).extracting(Product::getName).containsExactly("Coffee", "Cocoa");
         assertThat(result.totalElements()).isEqualTo(2);
     }
 
