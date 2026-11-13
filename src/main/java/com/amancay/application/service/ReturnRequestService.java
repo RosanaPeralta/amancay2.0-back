@@ -1,14 +1,17 @@
+
 package com.amancay.application.service;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.amancay.application.port.in.CreateReturnRequestUseCase;
+import com.amancay.application.port.in.FindReturnRequestByOrderUseCase;
 import com.amancay.application.port.out.LoadRequesterPort;
 import com.amancay.application.port.out.OrderRepositoryPort;
 import com.amancay.application.port.out.ReturnRequestRepositoryPort;
@@ -20,7 +23,9 @@ import com.amancay.domain.model.ReturnReason;
 import com.amancay.domain.model.ReturnRequest;
 
 @Service
-public class ReturnRequestService implements CreateReturnRequestUseCase {
+public class ReturnRequestService implements
+        CreateReturnRequestUseCase,
+        FindReturnRequestByOrderUseCase {
 
     private static final Duration RETURN_WINDOW = Duration.ofDays(10);
 
@@ -48,31 +53,25 @@ public class ReturnRequestService implements CreateReturnRequestUseCase {
             ReturnReason reason,
             String comment) {
 
-        // Verifica que el usuario autenticado exista.
         loadRequesterPort.load(requesterId);
 
-        // Busca el pedido.
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
 
-        // Un cliente solamente puede solicitar la devolución de sus propios pedidos.
         if (!order.belongsTo(requesterId)) {
             throw new OrderAccessDeniedException(
                     "No puedes solicitar la devolución de un pedido que no te pertenece");
         }
 
-        // El pedido debe estar entregado.
         if (order.getStatus() != OrderStatus.ENTREGADO) {
             throw new IllegalArgumentException(
                     "Only delivered orders can be returned");
         }
 
-        // Obtiene la fecha real de entrega desde el historial.
         Instant deliveredAt = order.getDeliveredAt()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "The order has no valid delivery date"));
 
-        // El plazo incluye el instante exacto en que se cumplen los diez días.
         Instant now = clock.instant();
         Instant deadline = deliveredAt.plus(RETURN_WINDOW);
 
@@ -81,7 +80,6 @@ public class ReturnRequestService implements CreateReturnRequestUseCase {
                     "The return period of 10 days has expired");
         }
 
-        // Solo se admite una solicitud por pedido.
         if (returnRequestRepository.findByOrderId(orderId).isPresent()) {
             throw new IllegalStateException(
                     "A return request already exists for this order");
@@ -94,5 +92,20 @@ public class ReturnRequestService implements CreateReturnRequestUseCase {
                 now);
 
         return returnRequestRepository.save(request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ReturnRequest> findByOrderId(UUID requesterId, UUID orderId) {
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+        if (!order.belongsTo(requesterId)) {
+            throw new OrderAccessDeniedException(
+                    "No puedes consultar la devolución de un pedido que no te pertenece");
+        }
+
+        return returnRequestRepository.findByOrderId(orderId);
     }
 }
