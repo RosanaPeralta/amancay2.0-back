@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.Objects;
+import java.util.Optional;
 
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
 
@@ -71,6 +73,14 @@ public class Order {
     public List<OrderStatusChange> getStatusHistory() {
         return List.copyOf(statusHistory);
     }
+
+    public Optional<Instant> getDeliveredAt() {
+    return statusHistory.stream()
+            .filter(change -> change.status() == OrderStatus.ENTREGADO)
+            .map(OrderStatusChange::changedAt)
+            .filter(Objects::nonNull)
+            .findFirst();
+}
 
     public UUID getId() {
         return id;
