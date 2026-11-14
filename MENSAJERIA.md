@@ -1,7 +1,9 @@
 # Mensajería: estados del pedido por cola (RabbitMQ)
 
-Hasta que se aprueba el pago, el pedido lo maneja la app. **Desde `EN_PREPARACION`, el estado avanza por cola**,
-y cada cambio de estado se publica como evento para que otros consumidores reaccionen (por ejemplo, el mailer).
+Hasta que se aprueba el pago, el pedido lo maneja la app. **Desde `EN_PREPARACION`, el estado lo avanza un sistema
+de logística externo publicando comandos en RabbitMQ**; el backend solo los consume (no expone ningún endpoint para
+avanzar el pedido). Cada cambio de estado se publica como evento para que otros consumidores reaccionen (por ejemplo,
+el mailer).
 
 ```
 [App, síncrono]                          [RabbitMQ, asíncrono]
@@ -31,8 +33,9 @@ Exchange `amancay.orders` (topic, durable):
 | `order.status.*` | `amancay.notifications.order-status` | `OrderStatusNotificationListener` | Manda el mail del estado, si tiene (`NotifyOrderStatusChangeUseCase`) |
 
 Productores:
-- **Comandos**: el panel de admin (`PATCH /api/orders/{id}/status`, responde **202**) y la consola de logística
-  (`DDA2/amancay-mq-console`).
+- **Comandos**: el sistema de logística externo. En desarrollo, la consola de logística (`DDA2/amancay-mq-console`)
+  o la UI de RabbitMQ (**Exchanges** → `amancay.orders` → **Publish message**, routing key `order.command.advance`,
+  property `content_type=application/json`).
 - **Eventos**: `RabbitOrderEventRelay` reenvía cada `OrderStatusChangedEvent` **después del commit**, así nunca sale a la
   cola un cambio que no se guardó.
 
@@ -73,28 +76,18 @@ El mensaje en la DLQ conserva el cuerpo original y suma los headers `x-exception
 `x-original-exchange` y `x-original-routingKey`.
 
 **Dónde se ve:**
-1. UI de RabbitMQ, http://localhost:15672 (guest/guest) → *Queues* → la `.dlq` → *Get messages*.
+1. UI de RabbitMQ, http://localhost:15672 (guest/guest) → *Queues* → la `.dlq` → *Get messages* (ver
+   [README](README.md#ver-los-mensajes-en-rabbitmq), también para ver los mensajes ya consumidos con tracing).
 2. La consola de logística (http://localhost:3001) → *Dead letter queues*.
 3. Logs del backend: `WARN ... rejected: <motivo>`.
 
-**Reprocesar:** en la UI de RabbitMQ, dentro de la DLQ, *Move messages* (plugin shovel, ya habilitado en el
-docker-compose) hacia la cola original, una vez corregido el problema.
+**Reprocesar:** en la UI de RabbitMQ, dentro de la DLQ, *Move messages* (plugin shovel, ver el setup del README)
+hacia la cola original, una vez corregido el problema.
 
 ## Correr local
 
-```bash
-# En la raíz de DDA2
-docker compose up -d                 # RabbitMQ (5672 / 15672) + Mailpit (1025 / 8025)
-
-# Backend: mails por SMTP a Mailpit (sin MAIL_ENABLED=true solo se loguean)
-MAIL_ENABLED=true ./mvnw spring-boot:run
-
-# Consola de logística (opcional)
-cd ../amancay-mq-console && npm install && npm start
-```
-
-Mails enviados: http://localhost:8025. Para otro broker (por ejemplo CloudAMQP), configurar `RABBITMQ_HOST`,
-`RABBITMQ_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST` y `RABBITMQ_SSL=true`.
+El setup de RabbitMQ y Mailpit está en el [README](README.md#rabbitmq-y-mails). La consola de logística
+(`DDA2/amancay-mq-console`, fuera del repo) se levanta con `npm install && npm start` y queda en http://localhost:3001.
 
 ## Patrones
 
@@ -105,7 +98,7 @@ Mails enviados: http://localhost:8025. Para otro broker (por ejemplo CloudAMQP),
 | **Observer / Publish-Subscribe** | `OrderStatusChangedEvent` → exchange topic → N suscriptores (hoy, el mailer) |
 | **Strategy** | `OrderStatusMail`: un mail por estado (`PurchaseConfirmedMail`, `OrderDispatchedMail`), elegido por `OrderStatusNotificationService` |
 | **Template Method** | `OrderStatusMail.build()`: estructura común del mail; cada subclase completa asunto, intro y cierre |
-| **Adapter** (puertos y adaptadores) | `SendOrderCommandPort` → `RabbitOrderCommandSender`, `MailSenderPort` → `SmtpMailSender` / `LoggingMailSender` |
+| **Adapter** (puertos y adaptadores) | `PublishOrderEventPort` → `SpringOrderEventPublisher` + `RabbitOrderEventRelay`, `MailSenderPort` → `SmtpMailSender` / `LoggingMailSender`; los listeners de RabbitMQ son adaptadores de entrada |
 | **Idempotent Consumer / Dead Letter Channel** | los listeners y las DLQ |
 
 ## Limitaciones conocidas
