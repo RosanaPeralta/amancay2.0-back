@@ -25,6 +25,7 @@ import com.amancay.domain.exception.InactiveUserException;
 import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
 import com.amancay.domain.exception.InvalidPaymentStatusTransitionException;
+import com.amancay.domain.exception.MessagingUnavailableException;
 import com.amancay.domain.exception.OrderAccessDeniedException;
 import com.amancay.domain.exception.OrderNotFoundException;
 import com.amancay.domain.exception.PaymentNotFoundException;
@@ -157,6 +158,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(InsufficientStockException.class)
     public ResponseEntity<Map<String, String>> handleInsufficientStock(InsufficientStockException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(MessagingUnavailableException.class)
+    public ResponseEntity<Map<String, String>> handleMessagingUnavailable(MessagingUnavailableException exception) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("error", exception.getMessage()));
     }
 
     @ExceptionHandler(ShippingQuoteUnavailableException.class)

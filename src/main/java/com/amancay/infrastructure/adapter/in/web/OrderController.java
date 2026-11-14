@@ -18,15 +18,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.amancay.application.port.in.ChangeOrderStatusUseCase;
 import com.amancay.application.port.in.CreateOrderUseCase;
 import com.amancay.application.port.in.DescribeOrderItemsQuery;
 import com.amancay.application.port.in.GetOrderQuery;
 import com.amancay.application.port.in.ListOrdersQuery;
 import com.amancay.application.port.in.QuoteShippingQuery;
+import com.amancay.application.port.in.RequestOrderAdvanceUseCase;
 import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderItemProduct;
 import com.amancay.infrastructure.adapter.in.web.dto.CreateOrderRequest;
+import com.amancay.infrastructure.adapter.in.web.dto.OrderAdvanceAcceptedResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.OrderResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.ShippingQuoteResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.UpdateOrderStatusRequest;
@@ -42,17 +43,17 @@ public class OrderController {
     private final ListOrdersQuery listOrdersQuery;
     private final GetOrderQuery getOrderQuery;
     private final CreateOrderUseCase createOrderUseCase;
-    private final ChangeOrderStatusUseCase changeOrderStatusUseCase;
+    private final RequestOrderAdvanceUseCase requestOrderAdvanceUseCase;
     private final DescribeOrderItemsQuery describeOrderItemsQuery;
     private final QuoteShippingQuery quoteShippingQuery;
 
     public OrderController(ListOrdersQuery listOrdersQuery, GetOrderQuery getOrderQuery,
-            CreateOrderUseCase createOrderUseCase, ChangeOrderStatusUseCase changeOrderStatusUseCase,
+            CreateOrderUseCase createOrderUseCase, RequestOrderAdvanceUseCase requestOrderAdvanceUseCase,
             DescribeOrderItemsQuery describeOrderItemsQuery, QuoteShippingQuery quoteShippingQuery) {
         this.listOrdersQuery = listOrdersQuery;
         this.getOrderQuery = getOrderQuery;
         this.createOrderUseCase = createOrderUseCase;
-        this.changeOrderStatusUseCase = changeOrderStatusUseCase;
+        this.requestOrderAdvanceUseCase = requestOrderAdvanceUseCase;
         this.describeOrderItemsQuery = describeOrderItemsQuery;
         this.quoteShippingQuery = quoteShippingQuery;
     }
@@ -90,14 +91,16 @@ public class OrderController {
         return ResponseEntity.created(URI.create("/api/orders/" + order.id())).body(order);
     }
 
+    // Desde EN_PREPARACION el estado avanza por la cola de logistica: esto solo encola el
+    // pedido de cambio (202). El nuevo estado se ve al volver a consultar la orden.
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/status")
-    public ResponseEntity<OrderResponse> changeStatus(
+    public ResponseEntity<OrderAdvanceAcceptedResponse> changeStatus(
             @AuthenticationPrincipal LoggedUser loggedUser,
             @PathVariable UUID id,
             @Valid @RequestBody UpdateOrderStatusRequest request) {
-        return ResponseEntity.ok(toResponse(changeOrderStatusUseCase.changeStatus(loggedUser.id(), id,
-                request.status())));
+        return ResponseEntity.accepted().body(OrderAdvanceAcceptedResponse.from(
+                requestOrderAdvanceUseCase.requestAdvance(loggedUser.id(), id, request.status())));
     }
 
     private OrderResponse toResponse(Order order) {

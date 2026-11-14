@@ -19,8 +19,8 @@ import com.amancay.infrastructure.adapter.in.web.dto.AdminOrderResponse;
 import com.amancay.infrastructure.security.LoggedUser;
 
 /**
- * Listado de pedidos de todos los usuarios para el panel de admin. El cambio de estado
- * sigue siendo PATCH /api/orders/{id}/status.
+ * Listado de pedidos de todos los usuarios para el panel de admin. El avance de estado
+ * (encolado, 202) sigue siendo PATCH /api/orders/{id}/status.
  */
 @RestController
 @RequestMapping("/api/admin/orders")

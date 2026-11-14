@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.amancay.application.port.in.CreateOrderCommand;
+import com.amancay.application.service.fake.InMemoryOrderRepository;
 import com.amancay.application.port.out.LoadProductVariantPort;
 import com.amancay.application.port.out.LoadRequesterPort;
 import com.amancay.application.port.out.LoadShippingAddressPort;
@@ -46,7 +47,7 @@ class OrderServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-11-14T12:00:00Z");
 
-    private final InMemoryOrders orders = new InMemoryOrders();
+    private final InMemoryOrderRepository orders = new InMemoryOrderRepository();
     private final Map<UUID, LoadProductVariantPort.ProductVariantInfo> variants = new HashMap<>();
     private final Map<UUID, ShippingAddress> addresses = new HashMap<>();
     private final Map<UUID, LoadRequesterPort.Requester> users = new HashMap<>();
@@ -71,7 +72,7 @@ class OrderServiceTest {
             return new ShippingQuote(new BigDecimal("15.0"), new BigDecimal("12.50"));
         };
         orderService = new OrderService(orders, variantPort, addressPort, requesterPort, eventPort, shippingPort,
-                new AdminGuard(requesterPort), Clock.fixed(NOW, ZoneOffset.UTC));
+                Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -210,53 +211,6 @@ class OrderServiceTest {
     }
 
     @Test
-    void changeStatusPersistsTheTransitionAndPublishesAnEvent() {
-        UUID orderId = UUID.randomUUID();
-        UUID buyerId = UUID.randomUUID();
-        orders.put(OrderFixtures.persisted(orderId, buyerId, OrderStatus.EN_PREPARACION));
-
-        Order result = orderService.changeStatus(admin(), orderId, OrderStatus.DESPACHADO);
-
-        assertThat(result.getStatus()).isEqualTo(OrderStatus.DESPACHADO);
-        assertThat(orders.findById(orderId).orElseThrow().getStatusHistory())
-                .extracting(OrderStatusChange::status).containsExactly(OrderStatus.DESPACHADO);
-        assertSinglePublishedEvent(orderId, buyerId, OrderStatus.EN_PREPARACION, OrderStatus.DESPACHADO);
-    }
-
-    @Test
-    void adminCannotMoveAnOrderToPreparationWithoutAnApprovedPayment() {
-        UUID orderId = UUID.randomUUID();
-        orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
-
-        assertThatThrownBy(() -> orderService.changeStatus(admin(), orderId, OrderStatus.EN_PREPARACION))
-                .isInstanceOf(InvalidOrderStatusTransitionException.class);
-        assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.CREADO);
-        assertThat(publishedEvents).isEmpty();
-    }
-
-    @Test
-    void invalidTransitionIsNotSavedNorPublished() {
-        UUID orderId = UUID.randomUUID();
-        orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
-
-        assertThatThrownBy(() -> orderService.changeStatus(admin(), orderId, OrderStatus.ENTREGADO))
-                .isInstanceOf(InvalidOrderStatusTransitionException.class);
-        assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.CREADO);
-        assertThat(publishedEvents).isEmpty();
-    }
-
-    @Test
-    void buyerCannotChangeTheStatus() {
-        UUID orderId = UUID.randomUUID();
-        orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
-
-        assertThatThrownBy(() -> orderService.changeStatus(buyer(), orderId, OrderStatus.EN_PREPARACION))
-                .isInstanceOf(AdminRequiredException.class);
-        assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.CREADO);
-        assertThat(publishedEvents).isEmpty();
-    }
-
-    @Test
     void markAsPaidMovesTheOrderWithoutAnAdmin() {
         UUID orderId = UUID.randomUUID();
         UUID buyerId = UUID.randomUUID();
@@ -305,61 +259,5 @@ class OrderServiceTest {
 
     private CreateOrderCommand command(UUID requesterId, UUID addressId, UUID variantId, int quantity) {
         return new CreateOrderCommand(requesterId, addressId, List.of(new CreateOrderCommand.Item(variantId, quantity)));
-    }
-
-    // Imita lo que hace la base: asigna ids y timestamps al guardar, y devuelve una
-    // copia para que el test no comparta la instancia con el servicio.
-    private static final class InMemoryOrders implements OrderRepositoryPort {
-
-        private final Map<UUID, Order> store = new HashMap<>();
-
-        void put(Order order) {
-            store.put(order.getId(), order);
-        }
-
-        @Override
-        public Optional<Order> findById(UUID id) {
-            return Optional.ofNullable(store.get(id)).map(InMemoryOrders::copy);
-        }
-
-        @Override
-        public List<Order> findByUserId(UUID userId) {
-            return store.values().stream().filter(order -> order.belongsTo(userId)).map(InMemoryOrders::copy)
-                    .toList();
-        }
-
-        @Override
-        public List<Order> findAllById(Collection<UUID> ids) {
-            return ids.stream().map(store::get).filter(order -> order != null).map(InMemoryOrders::copy).toList();
-        }
-
-        @Override
-        public List<Order> findAllNewestFirst() {
-            return store.values().stream().sorted(Comparator.comparing(Order::getCreatedAt).reversed())
-                    .map(InMemoryOrders::copy).toList();
-        }
-
-        @Override
-        public Order save(Order order) {
-            UUID id = order.getId() == null ? UUID.randomUUID() : order.getId();
-            Instant now = Instant.now();
-            Order saved = new Order(id, order.getUserId(), order.getShippingAddressId(), order.getShippingAddress(),
-                    order.getStatus(), order.getSubtotal(), order.getShippingCost(), order.getTotal(),
-                    order.getCreatedAt() == null ? now : order.getCreatedAt(), now, order.getItems(),
-                    order.getStatusHistory().stream()
-                            .map(change -> change.isNew()
-                                    ? new OrderStatusChange(UUID.randomUUID(), change.status(), now)
-                                    : change)
-                            .toList());
-            store.put(id, saved);
-            return copy(saved);
-        }
-
-        private static Order copy(Order order) {
-            return new Order(order.getId(), order.getUserId(), order.getShippingAddressId(),
-                    order.getShippingAddress(), order.getStatus(), order.getSubtotal(), order.getShippingCost(),
-                    order.getTotal(), order.getCreatedAt(), order.getUpdatedAt(), order.getItems(),
-                    order.getStatusHistory());
-        }
     }
 }
