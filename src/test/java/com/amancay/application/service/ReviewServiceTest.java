@@ -44,9 +44,9 @@ class ReviewServiceTest {
     void setUp() {
         reviewService = new ReviewService(reviews, products, users, (userId, product) -> purchased,
                 Admins.guard());
-        productId = products.add("Carpa", "carpa", true, Set.of()).getId();
-        users.add(USER_ID, "ada@amancay.com", "Ada", Role.BUYER, true);
-        users.add(OTHER_USER_ID, "x@amancay.com", null, Role.BUYER, true);
+        productId = products.create("Carpa", "carpa", true, Set.of()).getId();
+        users.create(USER_ID, "ada@amancay.com", "Ada", Role.BUYER, true);
+        users.create(OTHER_USER_ID, "x@amancay.com", null, Role.BUYER, true);
     }
 
     @Test

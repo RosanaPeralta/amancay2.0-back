@@ -17,6 +17,8 @@ public record PaymentResponse(
         PaymentStatus status,
         String reason,
         String transferReference,
+        String checkoutUrl,
+        String externalId,
         Instant createdAt) {
 
     public static PaymentResponse from(Payment payment) {
@@ -29,6 +31,7 @@ public record PaymentResponse(
 
     private static PaymentResponse from(Payment payment, String reason) {
         return new PaymentResponse(payment.getId(), payment.getOrderId(), payment.getAmount(), payment.getMethod(),
-                payment.getStatus(), reason, payment.getTransferReference(), payment.getCreatedAt());
+                payment.getStatus(), reason, payment.getTransferReference(), payment.getCheckoutUrl(),
+                payment.getExternalId(), payment.getCreatedAt());
     }
 }

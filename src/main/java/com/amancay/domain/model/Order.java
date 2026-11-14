@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.Objects;
+import java.util.Optional;
 
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
 
@@ -45,12 +47,14 @@ public class Order {
     }
 
     public static Order create(UUID userId, UUID shippingAddressId, ShippingAddress shippingAddress,
-            List<OrderItem> items) {
+            List<OrderItem> items, BigDecimal shippingCost) {
         if (items == null || items.isEmpty()) {
             throw new IllegalArgumentException("An order needs at least one item");
         }
+        if (shippingCost == null || shippingCost.signum() < 0) {
+            throw new IllegalArgumentException("shippingCost must be zero or positive");
+        }
         BigDecimal subtotal = items.stream().map(OrderItem::subtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal shippingCost = BigDecimal.ZERO;
         return new Order(null, userId, shippingAddressId, shippingAddress, OrderStatus.CREADO, subtotal, shippingCost,
                 subtotal.add(shippingCost), null, null, items, List.of());
     }
@@ -71,6 +75,14 @@ public class Order {
     public List<OrderStatusChange> getStatusHistory() {
         return List.copyOf(statusHistory);
     }
+
+    public Optional<Instant> getDeliveredAt() {
+    return statusHistory.stream()
+            .filter(change -> change.status() == OrderStatus.ENTREGADO)
+            .map(OrderStatusChange::changedAt)
+            .filter(Objects::nonNull)
+            .findFirst();
+}
 
     public UUID getId() {
         return id;

@@ -116,7 +116,7 @@ public class Product {
         this.discount = discount;
     }
 
-    public void removeDiscount() {
+    public void deleteDiscount() {
         this.discount = null;
     }
 

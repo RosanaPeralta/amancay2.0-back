@@ -23,7 +23,7 @@ public class InMemoryUserRepository implements UserRepositoryPort {
     public final List<String> calls = new ArrayList<>();
     private Instant clock = Instant.parse("2026-01-01T00:00:00Z");
 
-    public User add(UUID id, String email, String name, Role role, boolean active) {
+    public User create(UUID id, String email, String name, Role role, boolean active) {
         clock = clock.plusSeconds(1);
         User user = new User(id, email, name, role, active, clock, clock);
         store.put(id, user);

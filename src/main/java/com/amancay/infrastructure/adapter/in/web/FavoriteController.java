@@ -16,11 +16,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.amancay.application.port.in.AddFavoriteUseCase;
+import com.amancay.application.port.in.CreateFavoriteUseCase;
 import com.amancay.application.port.in.ListFavoritesQuery;
-import com.amancay.application.port.in.RemoveFavoriteUseCase;
+import com.amancay.application.port.in.DeleteFavoriteUseCase;
 import com.amancay.domain.model.PageQuery;
-import com.amancay.infrastructure.adapter.in.web.dto.AddFavoriteRequest;
+import com.amancay.infrastructure.adapter.in.web.dto.CreateFavoriteRequest;
 import com.amancay.infrastructure.adapter.in.web.dto.FavoriteResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.PageResponse;
 import com.amancay.infrastructure.security.LoggedUser;
@@ -34,14 +34,14 @@ import jakarta.validation.Valid;
 public class FavoriteController {
 
     private final ListFavoritesQuery listFavoritesQuery;
-    private final AddFavoriteUseCase addFavoriteUseCase;
-    private final RemoveFavoriteUseCase removeFavoriteUseCase;
+    private final CreateFavoriteUseCase createFavoriteUseCase;
+    private final DeleteFavoriteUseCase deleteFavoriteUseCase;
 
-    public FavoriteController(ListFavoritesQuery listFavoritesQuery, AddFavoriteUseCase addFavoriteUseCase,
-            RemoveFavoriteUseCase removeFavoriteUseCase) {
+    public FavoriteController(ListFavoritesQuery listFavoritesQuery, CreateFavoriteUseCase createFavoriteUseCase,
+            DeleteFavoriteUseCase deleteFavoriteUseCase) {
         this.listFavoritesQuery = listFavoritesQuery;
-        this.addFavoriteUseCase = addFavoriteUseCase;
-        this.removeFavoriteUseCase = removeFavoriteUseCase;
+        this.createFavoriteUseCase = createFavoriteUseCase;
+        this.deleteFavoriteUseCase = deleteFavoriteUseCase;
     }
 
     @GetMapping
@@ -59,18 +59,18 @@ public class FavoriteController {
     }
 
     @PostMapping
-    public ResponseEntity<FavoriteResponse> add(
+    public ResponseEntity<FavoriteResponse> create(
             @AuthenticationPrincipal LoggedUser loggedUser,
-            @Valid @RequestBody AddFavoriteRequest request) {
-        FavoriteResponse favorite = FavoriteResponse.from(addFavoriteUseCase.add(loggedUser.id(), request.productId()));
+            @Valid @RequestBody CreateFavoriteRequest request) {
+        FavoriteResponse favorite = FavoriteResponse.from(createFavoriteUseCase.create(loggedUser.id(), request.productId()));
         return ResponseEntity.created(URI.create("/api/me/favorites/" + favorite.productId())).body(favorite);
     }
 
     @DeleteMapping("/{productId}")
-    public ResponseEntity<Void> remove(
+    public ResponseEntity<Void> delete(
             @AuthenticationPrincipal LoggedUser loggedUser,
             @PathVariable UUID productId) {
-        removeFavoriteUseCase.remove(loggedUser.id(), productId);
+        deleteFavoriteUseCase.delete(loggedUser.id(), productId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -16,7 +16,7 @@ public final class OrderFixtures {
 
     public static Order newOrder() {
         return Order.create(UUID.randomUUID(), UUID.randomUUID(), ADDRESS,
-                List.of(OrderItem.create(UUID.randomUUID(), 1, new BigDecimal("10.00"))));
+                List.of(OrderItem.create(UUID.randomUUID(), 1, new BigDecimal("10.00"))), BigDecimal.ZERO);
     }
 
     public static Order persisted(UUID id, UUID userId, OrderStatus status, BigDecimal total, List<OrderItem> items) {

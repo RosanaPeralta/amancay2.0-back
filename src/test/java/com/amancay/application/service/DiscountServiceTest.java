@@ -80,7 +80,7 @@ class DiscountServiceTest {
     @Test
     void cannotDeleteADiscountThatIsAssignedToAProduct() {
         Discount discount = discountService.create(ADMIN_ID, new BigDecimal("15"), "Flash sale");
-        Product product = products.add("Laptop", "laptop", true, Set.of());
+        Product product = products.create("Laptop", "laptop", true, Set.of());
         productService.assignDiscount(ADMIN_ID, product.getId(), discount.getId());
 
         assertThatThrownBy(() -> discountService.delete(ADMIN_ID, discount.getId()))
@@ -99,7 +99,7 @@ class DiscountServiceTest {
 
     @Test
     void assignsDiscountToProduct() {
-        Product product = products.add("Laptop", "laptop", true, Set.of());
+        Product product = products.create("Laptop", "laptop", true, Set.of());
         Discount discount = discountService.create(ADMIN_ID, new BigDecimal("15"), "Flash sale");
 
         Product result = productService.assignDiscount(ADMIN_ID, product.getId(), discount.getId());
@@ -110,26 +110,26 @@ class DiscountServiceTest {
 
     @Test
     void assigningAnUnknownDiscountIsNotFound() {
-        Product product = products.add("Laptop", "laptop", true, Set.of());
+        Product product = products.create("Laptop", "laptop", true, Set.of());
 
         assertThatThrownBy(() -> productService.assignDiscount(ADMIN_ID, product.getId(), 99L))
                 .isInstanceOf(DiscountNotFoundException.class);
     }
 
     @Test
-    void removesDiscountFromProduct() {
-        Product product = products.add("Mouse", "mouse", true, Set.of());
+    void deletesDiscountFromProduct() {
+        Product product = products.create("Mouse", "mouse", true, Set.of());
         Discount discount = discountService.create(ADMIN_ID, new BigDecimal("10"), "Black Friday");
         productService.assignDiscount(ADMIN_ID, product.getId(), discount.getId());
 
-        Product result = productService.removeDiscount(ADMIN_ID, product.getId());
+        Product result = productService.deleteDiscount(ADMIN_ID, product.getId());
 
         assertThat(result.getDiscount()).isNull();
     }
 
     @Test
     void createAndAssignCreatesTheDiscountAndLinksIt() {
-        Product product = products.add("Mouse", "mouse", true, Set.of());
+        Product product = products.create("Mouse", "mouse", true, Set.of());
 
         Product result = productService.createAndAssignDiscount(ADMIN_ID, product.getId(), new BigDecimal("25"), "Hot Sale");
 

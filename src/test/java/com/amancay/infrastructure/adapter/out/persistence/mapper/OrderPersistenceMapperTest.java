@@ -24,7 +24,7 @@ class OrderPersistenceMapperTest {
     void newEntityCopiesEverythingAndLinksChildrenBackToTheOrder() {
         UUID variantId = UUID.randomUUID();
         Order order = Order.create(UUID.randomUUID(), UUID.randomUUID(), OrderFixtures.ADDRESS,
-                List.of(OrderItem.create(variantId, 2, new BigDecimal("50.00"))));
+                List.of(OrderItem.create(variantId, 2, new BigDecimal("50.00"))), BigDecimal.ZERO);
 
         OrderJpaEntity entity = mapper.toNewEntity(order);
 

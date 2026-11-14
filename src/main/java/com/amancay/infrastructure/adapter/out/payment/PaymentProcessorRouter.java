@@ -17,11 +17,13 @@ class PaymentProcessorRouter implements PaymentProcessorPort {
     private final Map<PaymentMethod, PaymentProcessor> processorsByMethod;
 
     PaymentProcessorRouter(CardPaymentProcessor cardPaymentProcessor,
-            ManualConfirmationPaymentProcessor manualConfirmationPaymentProcessor) {
+            ManualConfirmationPaymentProcessor manualConfirmationPaymentProcessor,
+            MercadoPagoPaymentProcessor mercadoPagoPaymentProcessor) {
         this.processorsByMethod = Map.of(
                 PaymentMethod.TARJETA_CREDITO, cardPaymentProcessor,
                 PaymentMethod.TARJETA_DEBITO, cardPaymentProcessor,
-                PaymentMethod.TRANSFERENCIA, manualConfirmationPaymentProcessor);
+                PaymentMethod.TRANSFERENCIA, manualConfirmationPaymentProcessor,
+                PaymentMethod.MERCADO_PAGO, mercadoPagoPaymentProcessor);
     }
 
     @Override

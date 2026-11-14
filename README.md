@@ -98,6 +98,67 @@ Swagger UI está disponible en `/swagger-ui/index.html` y el contrato adicional 
 
 Perfil (`/api/me`), direcciones (`/api/me/addresses`), favoritos (`/api/me/favorites`), reseñas (`/api/products/{id}/reviews`, `/api/reviews/{id}`, `/api/me/reviews`) y administración (`/api/admin/**`, solo ADMIN). Todos los endpoints están en Swagger UI.
 
+## Envíos
+
+El costo de envío se calcula con servicios gratuitos de OpenStreetMap, que no requieren API key: **Nominatim** convierte la dirección en coordenadas y **OSRM** calcula la distancia en auto desde el depósito.
+
+```text
+costo = SHIPPING_BASE_COST + km * SHIPPING_COST_PER_KM
+```
+
+- `GET /api/orders/shipping-quote?addressId=...` devuelve `{ "distanceKm": 11.1, "cost": 10.54 }` para mostrar en el checkout.
+- `POST /api/orders` vuelve a cotizar y guarda el resultado en `shippingCost` (el `total` ya lo incluye).
+- Si la dirección no se encuentra o el servicio no responde, se devuelve `503` y la orden no se crea.
+
+| Variable               | Default    | Descripción                    |
+|------------------------|------------|--------------------------------|
+| `SHIPPING_ORIGIN_LAT`  | `-34.6170` | Latitud del depósito (UADE).   |
+| `SHIPPING_ORIGIN_LON`  | `-58.3817` | Longitud del depósito.         |
+| `SHIPPING_BASE_COST`   | `5.00`     | Costo fijo por envío.          |
+| `SHIPPING_COST_PER_KM` | `0.50`     | Costo por kilómetro recorrido. |
+| `SHIPPING_COUNTRY_CODES` | `ar`     | Países donde se buscan las direcciones (ISO, separados por coma). Fuera de ellos la cotización falla. |
+
+Los servidores públicos de Nominatim y OSRM sirven para desarrollo y demos (Nominatim permite ~1 request por segundo), no para producción.
+
+## Recomendaciones con IA
+
+`GET /api/me/recommendations?limit=8` (requiere usuario autenticado) devuelve productos activos que el usuario todavía no marcó como favoritos, ordenados por afinidad con sus favoritos:
+
+```json
+{ "source": "AI", "favoritesCount": 3, "products": [ /* mismo formato que GET /api/products/{id} */ ] }
+```
+
+- **`AI`**: el ranking lo arma un LLM vía una API compatible con OpenAI (`chat/completions`); por defecto [Groq](https://console.groq.com), que tiene capa gratuita sin tarjeta, a partir de nombre, categorías y descripción corta de favoritos y candidatos. Los ids que devuelve se validan contra el catálogo (se descartan los inventados o repetidos) y el resultado se cachea en memoria por usuario mientras sus favoritos no cambien (`AMANCAY_RECOMMENDATIONS_CACHE_TTL`, default 30 min).
+- **`CATEGORIES`**: fallback sin IA (no hay `AI_API_KEY`, timeout o error): productos que comparten más categorías con los favoritos.
+- **`NONE`**: el usuario no tiene favoritos activos.
+
+| Variable                             | Default                     | Descripción                                   |
+|--------------------------------------|-----------------------------|-----------------------------------------------|
+| `AI_API_KEY`                         | *(vacía)*                   | API key de [Groq](https://console.groq.com/keys). Opcional. |
+| `AI_BASE_URL`                        | `https://api.groq.com/openai/v1` | Cualquier API compatible con OpenAI (xAI, OpenRouter, Ollama...). |
+| `AI_MODEL`                           | `openai/gpt-oss-120b`   | Modelo a usar.                                |
+| `AMANCAY_RECOMMENDATIONS_CACHE_TTL`  | `PT30M`                     | Vigencia del ranking cacheado (ISO-8601).     |
+
+## Integracion con mercado pago
+1. En [Tus integraciones](https://www.mercadopago.com.ar/developers/panel/app) crear una
+   aplicación con Checkout Pro.
+2. En **Cuentas de prueba** crear (si no existen) una cuenta **vendedor** y una **comprador**
+   de Argentina, la del comprador con saldo ficticio.
+3. En **Credenciales de prueba** copiar el *Access Token* para `MP_ACCESS_TOKEN`.
+4. Para pagar en el checkout, iniciar sesión con el usuario COMPRADOR de prueba (conviene
+   una ventana de incógnito, para no usar tu cuenta real).
+  
+- **`Variables MP`**: en `.env` MP_ACCESS_TOKEN=TEST-xxxxxxxxxxxxxxxx y MP_FRONTEND_URL=http://localhost:5173
+
+| Método | Ruta | Quién | Qué hace |
+|---|---|---|---|
+| POST | `/api/orders/{orderId}/payments` con `{"method":"MERCADO_PAGO"}` | comprador | Crea el pago `PENDIENTE` y devuelve `checkoutUrl` |
+| POST | `/api/payments/{paymentId}/verify` | comprador | Revisa en Mercado Pago y, si está aprobado, aprueba el pago. Devuelve el pago |
+| POST | `/api/webhooks/mercadopago` | Mercado Pago | Webhook. Público, validado con `x-signature` |
+
+`PaymentResponse` suma dos campos: `checkoutUrl` (adonde redirigir) y `externalId` (id del pago
+en Mercado Pago, una vez aprobado).
+
 ## Autenticación
 
 El login y el registro ocurren en **Supabase Auth** (desde el front). El backend no tiene endpoints de login: actúa como *resource server* y valida en cada request el JWT que emite Supabase, enviado como `Authorization: Bearer <access_token>`.

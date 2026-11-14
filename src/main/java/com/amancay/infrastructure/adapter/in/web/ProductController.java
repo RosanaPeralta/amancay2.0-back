@@ -30,7 +30,6 @@ import com.amancay.infrastructure.adapter.in.web.dto.CreateProductRequest;
 import com.amancay.infrastructure.adapter.in.web.dto.DiscountRequest;
 import com.amancay.infrastructure.adapter.in.web.dto.PageResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.ProductResponse;
-import com.amancay.infrastructure.adapter.in.web.dto.ProductSummaryResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.UpdateProductRequest;
 import com.amancay.infrastructure.security.LoggedUser;
 
@@ -60,7 +59,7 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<PageResponse<ProductSummaryResponse>> list(
+    public ResponseEntity<PageResponse<ProductResponse>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String name,
@@ -68,7 +67,7 @@ public class ProductController {
             @RequestParam(name = "is_active", required = false) Boolean isActive,
             @RequestParam(defaultValue = "name") String sort) {
         return ResponseEntity.ok(PageResponse.from(listProductsQuery.list(new ProductFilter(name, categoryId, isActive),
-                ProductSort.from(sort), new PageQuery(page, size)), ProductSummaryResponse::from));
+                ProductSort.from(sort), new PageQuery(page, size)), ProductResponse::from));
     }
 
     @GetMapping("/{id}")
@@ -117,9 +116,9 @@ public class ProductController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{productId}/discounts")
-    public ResponseEntity<Void> removeDiscount(@AuthenticationPrincipal LoggedUser loggedUser,
+    public ResponseEntity<Void> deleteDiscount(@AuthenticationPrincipal LoggedUser loggedUser,
             @PathVariable UUID productId) {
-        manageProductDiscountUseCase.removeDiscount(loggedUser.id(), productId);
+        manageProductDiscountUseCase.deleteDiscount(loggedUser.id(), productId);
         return ResponseEntity.noContent().build();
     }
 }

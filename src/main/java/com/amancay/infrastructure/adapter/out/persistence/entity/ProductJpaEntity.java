@@ -76,12 +76,12 @@ public class ProductJpaEntity {
     @Column(name = "category_id")
     private Set<UUID> categoryIds = new HashSet<>();
 
-    public void addVariant(ProductVariantJpaEntity variant) {
+    public void createVariant(ProductVariantJpaEntity variant) {
         variants.add(variant);
         variant.setProduct(this);
     }
 
-    public void addImage(ProductImageJpaEntity image) {
+    public void createImage(ProductImageJpaEntity image) {
         images.add(image);
         image.setProduct(this);
     }

@@ -10,7 +10,8 @@ public class PaymentPersistenceMapper {
 
     public Payment toDomain(PaymentJpaEntity entity) {
         return new Payment(entity.getId(), entity.getOrderId(), entity.getAmount(), entity.getMethod(),
-                entity.getStatus(), entity.getTransferReference(), entity.getCreatedAt(), entity.getUpdatedAt());
+                entity.getStatus(), entity.getTransferReference(), entity.getExternalId(), entity.getCheckoutUrl(),
+                entity.getCreatedAt(), entity.getUpdatedAt());
     }
 
     public PaymentJpaEntity toNewEntity(Payment payment) {
@@ -18,14 +19,16 @@ public class PaymentPersistenceMapper {
         entity.setOrderId(payment.getOrderId());
         entity.setAmount(payment.getAmount());
         entity.setMethod(payment.getMethod());
+        entity.setCheckoutUrl(payment.getCheckoutUrl());
         applyChanges(payment, entity);
         return entity;
     }
 
-    // Lo unico que cambia de un pago existente es su estado y la referencia de la
-    // transferencia; orden, monto y metodo quedan fijos al crearlo.
+    // Lo unico que cambia de un pago existente es su estado, la referencia de la
+    // transferencia y el id en Mercado Pago; orden, monto, metodo y checkout quedan fijos.
     public void applyChanges(Payment payment, PaymentJpaEntity entity) {
         entity.setStatus(payment.getStatus());
         entity.setTransferReference(payment.getTransferReference());
+        entity.setExternalId(payment.getExternalId());
     }
 }

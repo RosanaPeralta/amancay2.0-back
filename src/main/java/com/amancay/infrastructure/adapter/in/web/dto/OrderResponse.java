@@ -1,3 +1,4 @@
+
 package com.amancay.infrastructure.adapter.in.web.dto;
 
 import java.math.BigDecimal;
@@ -20,11 +21,23 @@ public record OrderResponse(
         BigDecimal total,
         Instant createdAt,
         Instant updatedAt,
+        Instant deliveredAt,
         List<OrderItemResponse> items) {
 
     public static OrderResponse from(Order order, Map<UUID, OrderItemProduct> products) {
-        return new OrderResponse(order.getId(), order.getUserId(), order.getShippingAddressId(), order.getStatus(),
-                order.getSubtotal(), order.getShippingCost(), order.getTotal(), order.getCreatedAt(),
-                order.getUpdatedAt(), order.getItems().stream().map(item -> OrderItemResponse.from(item, products)).toList());
+        return new OrderResponse(
+                order.getId(),
+                order.getUserId(),
+                order.getShippingAddressId(),
+                order.getStatus(),
+                order.getSubtotal(),
+                order.getShippingCost(),
+                order.getTotal(),
+                order.getCreatedAt(),
+                order.getUpdatedAt(),
+                order.getDeliveredAt().orElse(null),
+                order.getItems().stream()
+                        .map(item -> OrderItemResponse.from(item, products))
+                        .toList());
     }
 }

@@ -31,7 +31,7 @@ class AddressServiceTest {
 
     @BeforeEach
     void setUp() {
-        users.add(USER_ID, "a@amancay.com", "Ada", Role.BUYER, true);
+        users.create(USER_ID, "a@amancay.com", "Ada", Role.BUYER, true);
         addressService = new AddressService(addresses, users);
     }
 
@@ -94,7 +94,7 @@ class AddressServiceTest {
     @Test
     void addressOfAnotherUserIsNotFound() {
         UUID otherUser = UUID.randomUUID();
-        users.add(otherUser, "b@amancay.com", "Bob", Role.BUYER, true);
+        users.create(otherUser, "b@amancay.com", "Bob", Role.BUYER, true);
         Address theirs = addressService.create(otherUser, DATA);
         calls.clear();
 

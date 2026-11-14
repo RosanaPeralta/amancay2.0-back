@@ -23,6 +23,8 @@ import com.amancay.application.port.in.ListPendingPaymentsQuery.PendingPayment;
 import com.amancay.application.port.in.PaymentOutcome;
 import com.amancay.application.port.out.PayableOrderPort.PayableOrder;
 import com.amancay.application.port.out.PayableOrderPort;
+import com.amancay.application.port.out.PaymentProviderPort;
+import com.amancay.application.port.out.PaymentProviderPort.ProviderPayment;
 import com.amancay.application.port.out.PaymentRepositoryPort;
 import com.amancay.application.port.out.PublishPaymentEventPort;
 import com.amancay.application.port.out.StockPort;
@@ -48,6 +50,7 @@ class PaymentServiceTest {
     private final InMemoryPayments payments = new InMemoryPayments();
     private final FakeOrders orders = new FakeOrders();
     private final FakeStock stock = new FakeStock();
+    private final FakeProvider provider = new FakeProvider();
     private final Map<UUID, String> emails = new HashMap<>();
     private PaymentResult nextProcessorResult = PaymentResult.approved();
     private final List<PaymentDetails> processedDetails = new ArrayList<>();
@@ -63,6 +66,7 @@ class PaymentServiceTest {
                     processedDetails.add(details);
                     return nextProcessorResult;
                 },
+                provider,
                 stock,
                 userIds -> {
                     Map<UUID, String> found = new HashMap<>();
@@ -75,7 +79,7 @@ class PaymentServiceTest {
 
     @Test
     void approvedPaymentMovesTheOrderToEnPreparacion() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
 
         PaymentOutcome result = paymentService.create(REQUESTER_ID, order.id(), card());
 
@@ -89,7 +93,7 @@ class PaymentServiceTest {
 
     @Test
     void rejectedPaymentIsSavedWithItsReasonAndDoesNotTouchTheOrder() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         nextProcessorResult = PaymentResult.rejected("Card declined (simulated)");
 
         PaymentOutcome result = paymentService.create(REQUESTER_ID, order.id(), card());
@@ -104,7 +108,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotPayAnOrderThatAlreadyHasAnApprovedPayment() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         payments.put(order.id(), PaymentStatus.APROBADO, PaymentMethod.TARJETA_CREDITO);
 
         assertThatThrownBy(() -> paymentService.create(REQUESTER_ID, order.id(), card()))
@@ -121,7 +125,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotPayAnotherUsersOrder() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
 
         assertThatThrownBy(() -> paymentService.create(REQUESTER_ID, order.id(), card()))
                 .isInstanceOf(OrderAccessDeniedException.class);
@@ -130,7 +134,7 @@ class PaymentServiceTest {
 
     @Test
     void retryingARejectedPaymentCreatesANewAttemptForTheSameOrder() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment rejected = payments.put(order.id(), PaymentStatus.RECHAZADO, PaymentMethod.TARJETA_CREDITO);
 
         PaymentOutcome result = paymentService.retry(REQUESTER_ID, rejected.getId(), card());
@@ -143,7 +147,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotRetryAPaymentThatWasNotRejected() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment approved = payments.put(order.id(), PaymentStatus.APROBADO, PaymentMethod.TARJETA_CREDITO);
 
         assertThatThrownBy(() -> paymentService.retry(REQUESTER_ID, approved.getId(), card()))
@@ -158,7 +162,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotRetryAnotherUsersPayment() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
         Payment rejected = payments.put(order.id(), PaymentStatus.RECHAZADO, PaymentMethod.TARJETA_CREDITO);
 
         assertThatThrownBy(() -> paymentService.retry(REQUESTER_ID, rejected.getId(), card()))
@@ -168,7 +172,7 @@ class PaymentServiceTest {
 
     @Test
     void listsPaymentsOfOwnOrderNewestFirst() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment older = payments.put(order.id(), PaymentStatus.RECHAZADO, PaymentMethod.TARJETA_CREDITO);
         Payment newer = payments.put(order.id(), PaymentStatus.APROBADO, PaymentMethod.TARJETA_CREDITO);
 
@@ -179,7 +183,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotListPaymentsOfAnotherUsersOrder() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
 
         assertThatThrownBy(() -> paymentService.listByOrder(REQUESTER_ID, order.id()))
                 .isInstanceOf(OrderAccessDeniedException.class);
@@ -187,7 +191,7 @@ class PaymentServiceTest {
 
     @Test
     void confirmingAPendingPaymentAsApprovedMovesTheOrderForward() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
         Payment result = paymentService.confirm(ADMIN_ID, pending.getId(), PaymentStatus.APROBADO);
@@ -201,7 +205,7 @@ class PaymentServiceTest {
 
     @Test
     void confirmingAPendingPaymentAsRejectedDoesNotTouchTheOrder() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
         Payment result = paymentService.confirm(ADMIN_ID, pending.getId(), PaymentStatus.RECHAZADO);
@@ -214,7 +218,7 @@ class PaymentServiceTest {
 
     @Test
     void buyerCannotConfirmPaymentsNorListPendingOnes() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
         assertThatThrownBy(() -> paymentService.confirm(REQUESTER_ID, pending.getId(), PaymentStatus.APROBADO))
@@ -226,7 +230,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotConfirmAPaymentThatIsNotPending() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
         Payment approved = payments.put(order.id(), PaymentStatus.APROBADO, PaymentMethod.TRANSFERENCIA);
 
         assertThatThrownBy(() -> paymentService.confirm(ADMIN_ID, approved.getId(), PaymentStatus.APROBADO))
@@ -244,7 +248,7 @@ class PaymentServiceTest {
     void approvedPaymentDecrementsStockOfEachItem() {
         UUID variantId = UUID.randomUUID();
         stock.set(variantId, 5);
-        PayableOrder order = orders.add(REQUESTER_ID, "200", new PayableOrder.Line(variantId, 3));
+        PayableOrder order = orders.create(REQUESTER_ID, "200", new PayableOrder.Line(variantId, 3));
 
         paymentService.create(REQUESTER_ID, order.id(), card());
 
@@ -255,7 +259,7 @@ class PaymentServiceTest {
     void approvalFailsWhenStockRanOutInTheMeantime() {
         UUID variantId = UUID.randomUUID();
         stock.set(variantId, 2);
-        PayableOrder order = orders.add(REQUESTER_ID, "200", new PayableOrder.Line(variantId, 3));
+        PayableOrder order = orders.create(REQUESTER_ID, "200", new PayableOrder.Line(variantId, 3));
 
         assertThatThrownBy(() -> paymentService.create(REQUESTER_ID, order.id(), card()))
                 .isInstanceOf(InsufficientStockException.class);
@@ -266,7 +270,7 @@ class PaymentServiceTest {
     void confirmingATransferDecrementsStockToo() {
         UUID variantId = UUID.randomUUID();
         stock.set(variantId, 4);
-        PayableOrder order = orders.add(UUID.randomUUID(), "200", new PayableOrder.Line(variantId, 1));
+        PayableOrder order = orders.create(UUID.randomUUID(), "200", new PayableOrder.Line(variantId, 1));
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
         paymentService.confirm(ADMIN_ID, pending.getId(), PaymentStatus.APROBADO);
@@ -276,7 +280,7 @@ class PaymentServiceTest {
 
     @Test
     void attachingTransferReferenceStoresIt() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
         Payment result = paymentService.attachTransferReference(REQUESTER_ID, pending.getId(), "TRX-123");
@@ -287,7 +291,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotAttachTransferReferenceToACardPayment() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TARJETA_CREDITO);
 
         assertThatThrownBy(() -> paymentService.attachTransferReference(REQUESTER_ID, pending.getId(), "TRX-123"))
@@ -296,7 +300,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotAttachTransferReferenceToAnAlreadyDecidedPayment() {
-        PayableOrder order = orders.add(REQUESTER_ID, "200");
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
         Payment approved = payments.put(order.id(), PaymentStatus.APROBADO, PaymentMethod.TRANSFERENCIA);
 
         assertThatThrownBy(() -> paymentService.attachTransferReference(REQUESTER_ID, approved.getId(), "TRX-123"))
@@ -305,7 +309,7 @@ class PaymentServiceTest {
 
     @Test
     void cannotAttachTransferReferenceToAnotherUsersPayment() {
-        PayableOrder order = orders.add(UUID.randomUUID(), "200");
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
 
         assertThatThrownBy(() -> paymentService.attachTransferReference(REQUESTER_ID, pending.getId(), "TRX-123"))
@@ -317,7 +321,7 @@ class PaymentServiceTest {
     void listPendingReturnsAllPendingPaymentsWithBuyerEmail() {
         UUID buyerId = UUID.randomUUID();
         emails.put(buyerId, "buyer@amancay.com");
-        PayableOrder order = orders.add(buyerId, "200");
+        PayableOrder order = orders.create(buyerId, "200");
         Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
         payments.put(order.id(), PaymentStatus.RECHAZADO, PaymentMethod.TARJETA_CREDITO);
 
@@ -333,6 +337,114 @@ class PaymentServiceTest {
     @Test
     void listPendingReturnsEmptyListWhenNothingIsPending() {
         assertThat(paymentService.listPending(ADMIN_ID)).isEmpty();
+    }
+
+    @Test
+    void approvedMercadoPagoNotificationApprovesThePendingPaymentAndFulfillsTheOrder() {
+        UUID variantId = UUID.randomUUID();
+        stock.set(variantId, 4);
+        PayableOrder order = orders.create(REQUESTER_ID, "200", new PayableOrder.Line(variantId, 1));
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "approved", "200", order.id());
+
+        paymentService.syncFromProvider("mp-1");
+
+        Payment saved = payments.findById(pending.getId()).orElseThrow();
+        assertThat(saved.getStatus()).isEqualTo(PaymentStatus.APROBADO);
+        assertThat(saved.getExternalId()).isEqualTo("mp-1");
+        assertThat(orders.paid).containsExactly(order.id());
+        assertThat(stock.of(variantId)).isEqualTo(3);
+    }
+
+    @Test
+    void repeatedMercadoPagoNotificationIsAppliedOnlyOnce() {
+        UUID variantId = UUID.randomUUID();
+        stock.set(variantId, 4);
+        PayableOrder order = orders.create(REQUESTER_ID, "200", new PayableOrder.Line(variantId, 1));
+        payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "approved", "200", order.id());
+
+        paymentService.syncFromProvider("mp-1");
+        paymentService.syncFromProvider("mp-1");
+
+        assertThat(orders.paid).containsExactly(order.id());
+        assertThat(stock.of(variantId)).isEqualTo(3);
+    }
+
+    @Test
+    void notApprovedMercadoPagoPaymentLeavesThePaymentPending() {
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "rejected", "200", order.id());
+
+        paymentService.syncFromProvider("mp-1");
+
+        assertThat(payments.findById(pending.getId()).orElseThrow().getStatus()).isEqualTo(PaymentStatus.PENDIENTE);
+        assertThat(orders.paid).isEmpty();
+    }
+
+    @Test
+    void mercadoPagoPaymentWithAnotherAmountIsLeftForTheAdmin() {
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "approved", "150", order.id());
+
+        paymentService.syncFromProvider("mp-1");
+
+        assertThat(payments.findById(pending.getId()).orElseThrow().getStatus()).isEqualTo(PaymentStatus.PENDIENTE);
+        assertThat(orders.paid).isEmpty();
+    }
+
+    @Test
+    void notificationForAnUnknownMercadoPagoPaymentIsIgnored() {
+        paymentService.syncFromProvider("does-not-exist");
+
+        assertThat(orders.paid).isEmpty();
+    }
+
+    @Test
+    void buyerVerificationApprovesAPaymentAlreadyApprovedInMercadoPago() {
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "approved", "200", order.id());
+
+        Payment result = paymentService.verify(REQUESTER_ID, pending.getId());
+
+        assertThat(result.getStatus()).isEqualTo(PaymentStatus.APROBADO);
+        assertThat(result.getExternalId()).isEqualTo("mp-1");
+        assertThat(orders.paid).containsExactly(order.id());
+    }
+
+    @Test
+    void verificationKeepsThePaymentPendingWhileMercadoPagoHasNotApprovedIt() {
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "in_process", "200", order.id());
+
+        Payment result = paymentService.verify(REQUESTER_ID, pending.getId());
+
+        assertThat(result.getStatus()).isEqualTo(PaymentStatus.PENDIENTE);
+        assertThat(orders.paid).isEmpty();
+    }
+
+    @Test
+    void cannotVerifyAnotherUsersPayment() {
+        PayableOrder order = orders.create(UUID.randomUUID(), "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.MERCADO_PAGO);
+        provider.add("mp-1", "approved", "200", order.id());
+
+        assertThatThrownBy(() -> paymentService.verify(REQUESTER_ID, pending.getId()))
+                .isInstanceOf(OrderAccessDeniedException.class);
+        assertThat(orders.paid).isEmpty();
+    }
+
+    @Test
+    void onlyMercadoPagoPaymentsCanBeVerified() {
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
+        Payment pending = payments.put(order.id(), PaymentStatus.PENDIENTE, PaymentMethod.TRANSFERENCIA);
+
+        assertThatThrownBy(() -> paymentService.verify(REQUESTER_ID, pending.getId()))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private PaymentDetails card() {
@@ -375,20 +487,47 @@ class PaymentServiceTest {
         }
 
         @Override
+        public Optional<Payment> findByExternalId(String externalId) {
+            return store.values().stream().filter(payment -> externalId.equals(payment.getExternalId())).findFirst()
+                    .map(InMemoryPayments::copy);
+        }
+
+        @Override
         public Payment save(Payment payment) {
             clock = clock.plusSeconds(1);
             UUID id = payment.getId() == null ? UUID.randomUUID() : payment.getId();
             Payment saved = new Payment(id, payment.getOrderId(), payment.getAmount(), payment.getMethod(),
-                    payment.getStatus(), payment.getTransferReference(),
-                    payment.getCreatedAt() == null ? clock : payment.getCreatedAt(), clock);
+                    payment.getStatus(), payment.getTransferReference(), payment.getExternalId(),
+                    payment.getCheckoutUrl(), payment.getCreatedAt() == null ? clock : payment.getCreatedAt(), clock);
             store.put(id, saved);
             return copy(saved);
         }
 
         private static Payment copy(Payment payment) {
             return new Payment(payment.getId(), payment.getOrderId(), payment.getAmount(), payment.getMethod(),
-                    payment.getStatus(), payment.getTransferReference(), payment.getCreatedAt(),
-                    payment.getUpdatedAt());
+                    payment.getStatus(), payment.getTransferReference(), payment.getExternalId(),
+                    payment.getCheckoutUrl(), payment.getCreatedAt(), payment.getUpdatedAt());
+        }
+    }
+
+    // Imita a Mercado Pago: pagos por id, buscables por external_reference (id de la orden).
+    private static final class FakeProvider implements PaymentProviderPort {
+
+        private final Map<String, ProviderPayment> store = new LinkedHashMap<>();
+
+        void add(String id, String status, String amount, UUID orderId) {
+            store.put(id, new ProviderPayment(id, status, new BigDecimal(amount), orderId.toString()));
+        }
+
+        @Override
+        public Optional<ProviderPayment> findPayment(String providerPaymentId) {
+            return Optional.ofNullable(store.get(providerPaymentId));
+        }
+
+        @Override
+        public List<ProviderPayment> findPaymentsByExternalReference(String externalReference) {
+            return store.values().stream().filter(payment -> externalReference.equals(payment.externalReference()))
+                    .toList();
         }
     }
 
@@ -398,7 +537,7 @@ class PaymentServiceTest {
         private final Map<UUID, PayableOrder> store = new HashMap<>();
         private final List<UUID> paid = new ArrayList<>();
 
-        PayableOrder add(UUID buyerId, String total, PayableOrder.Line... lines) {
+        PayableOrder create(UUID buyerId, String total, PayableOrder.Line... lines) {
             PayableOrder order = new PayableOrder(UUID.randomUUID(), buyerId, new BigDecimal(total), List.of(lines));
             store.put(order.id(), order);
             return order;

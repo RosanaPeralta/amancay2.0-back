@@ -1,8 +1,8 @@
 package com.amancay.application.port.in;
 
 import com.amancay.domain.model.Favorite;
-import com.amancay.domain.model.ProductSummary;
+import com.amancay.domain.model.Product;
 
-// Favorito con lo minimo del producto para dibujar la tarjeta.
-public record FavoriteProduct(Favorite favorite, ProductSummary product) {
+// Favorito con el producto completo (precio, imagenes) para dibujar la misma tarjeta del catalogo.
+public record FavoriteProduct(Favorite favorite, Product product) {
 }

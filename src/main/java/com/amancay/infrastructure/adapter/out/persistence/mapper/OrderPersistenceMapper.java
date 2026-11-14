@@ -42,7 +42,7 @@ public class OrderPersistenceMapper {
             itemEntity.setProductVariantId(item.productVariantId());
             itemEntity.setQuantity(item.quantity());
             itemEntity.setUnitPrice(item.unitPrice());
-            entity.addItem(itemEntity);
+            entity.createItem(itemEntity);
         }
         appendNewStatusHistory(order, entity);
         return entity;
@@ -60,7 +60,7 @@ public class OrderPersistenceMapper {
                 .forEach(change -> {
                     OrderStatusHistoryJpaEntity history = new OrderStatusHistoryJpaEntity();
                     history.setStatus(change.status());
-                    entity.addStatusHistory(history);
+                    entity.createStatusHistory(history);
                 });
     }
 

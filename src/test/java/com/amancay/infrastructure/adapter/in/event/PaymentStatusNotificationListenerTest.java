@@ -123,6 +123,11 @@ class PaymentStatusNotificationListenerTest {
         }
 
         @Override
+        public Optional<Payment> findByExternalId(String externalId) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public Payment save(Payment payment) {
             throw new UnsupportedOperationException();
         }

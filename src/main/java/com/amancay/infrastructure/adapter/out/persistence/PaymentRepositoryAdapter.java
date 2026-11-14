@@ -45,6 +45,11 @@ class PaymentRepositoryAdapter implements PaymentRepositoryPort {
         return repository.existsByOrderIdAndStatus(orderId, status);
     }
 
+    @Override
+    public Optional<Payment> findByExternalId(String externalId) {
+        return repository.findByExternalId(externalId).map(mapper::toDomain);
+    }
+
     // saveAndFlush para que la respuesta ya traiga id y timestamps.
     @Override
     public Payment save(Payment payment) {

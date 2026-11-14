@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import com.amancay.application.port.out.PayableOrderPort.PayableOrder;
 import com.amancay.domain.model.PaymentDetails;
 import com.amancay.domain.model.PaymentMethod;
+import com.amancay.domain.model.PaymentResult;
 import com.amancay.domain.model.PaymentStatus;
 
 class PaymentProcessorRouterTest {
@@ -21,7 +22,8 @@ class PaymentProcessorRouterTest {
             "123");
 
     private final PaymentProcessorRouter router = new PaymentProcessorRouter(new CardPaymentProcessor(),
-            new ManualConfirmationPaymentProcessor());
+            new ManualConfirmationPaymentProcessor(),
+            new MercadoPagoPaymentProcessor(order -> "https://mp.test/checkout/" + order.id()));
 
     @Test
     void cardMethodsGoToTheCardProcessor() {
@@ -35,5 +37,13 @@ class PaymentProcessorRouterTest {
     void bankTransferStaysPendingForManualConfirmation() {
         assertThat(router.process(ORDER, new PaymentDetails(PaymentMethod.TRANSFERENCIA, null)).status())
                 .isEqualTo(PaymentStatus.PENDIENTE);
+    }
+
+    @Test
+    void mercadoPagoStaysPendingWithTheCheckoutUrl() {
+        PaymentResult result = router.process(ORDER, new PaymentDetails(PaymentMethod.MERCADO_PAGO, null));
+
+        assertThat(result.status()).isEqualTo(PaymentStatus.PENDIENTE);
+        assertThat(result.checkoutUrl()).isEqualTo("https://mp.test/checkout/" + ORDER.id());
     }
 }
