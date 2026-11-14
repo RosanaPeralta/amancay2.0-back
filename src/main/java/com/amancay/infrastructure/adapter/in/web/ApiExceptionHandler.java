@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.amancay.domain.exception.AddressLimitReachedException;
 import com.amancay.domain.exception.AddressNotFoundException;
 import com.amancay.domain.exception.AdminRequiredException;
-import com.amancay.domain.exception.BuyerEmailNotFoundException;
 import com.amancay.domain.exception.CategoryNotFoundException;
 import com.amancay.domain.exception.DiscountNotFoundException;
 import com.amancay.domain.exception.DuplicateCategoryNameException;
@@ -168,11 +167,6 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(PaymentNotFoundException.class)
     public ResponseEntity<Map<String, String>> handlePaymentNotFound(PaymentNotFoundException exception) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
-    }
-
-    @ExceptionHandler(BuyerEmailNotFoundException.class)
-    public ResponseEntity<Map<String, String>> handleBuyerEmailNotFound(BuyerEmailNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
     }
 
