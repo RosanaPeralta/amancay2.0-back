@@ -23,10 +23,12 @@ import com.amancay.application.port.in.CreateOrderUseCase;
 import com.amancay.application.port.in.DescribeOrderItemsQuery;
 import com.amancay.application.port.in.GetOrderQuery;
 import com.amancay.application.port.in.ListOrdersQuery;
+import com.amancay.application.port.in.QuoteShippingQuery;
 import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderItemProduct;
 import com.amancay.infrastructure.adapter.in.web.dto.CreateOrderRequest;
 import com.amancay.infrastructure.adapter.in.web.dto.OrderResponse;
+import com.amancay.infrastructure.adapter.in.web.dto.ShippingQuoteResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.UpdateOrderStatusRequest;
 import com.amancay.infrastructure.security.LoggedUser;
 
@@ -42,15 +44,17 @@ public class OrderController {
     private final CreateOrderUseCase createOrderUseCase;
     private final ChangeOrderStatusUseCase changeOrderStatusUseCase;
     private final DescribeOrderItemsQuery describeOrderItemsQuery;
+    private final QuoteShippingQuery quoteShippingQuery;
 
     public OrderController(ListOrdersQuery listOrdersQuery, GetOrderQuery getOrderQuery,
             CreateOrderUseCase createOrderUseCase, ChangeOrderStatusUseCase changeOrderStatusUseCase,
-            DescribeOrderItemsQuery describeOrderItemsQuery) {
+            DescribeOrderItemsQuery describeOrderItemsQuery, QuoteShippingQuery quoteShippingQuery) {
         this.listOrdersQuery = listOrdersQuery;
         this.getOrderQuery = getOrderQuery;
         this.createOrderUseCase = createOrderUseCase;
         this.changeOrderStatusUseCase = changeOrderStatusUseCase;
         this.describeOrderItemsQuery = describeOrderItemsQuery;
+        this.quoteShippingQuery = quoteShippingQuery;
     }
 
     @GetMapping
@@ -70,6 +74,12 @@ public class OrderController {
             @PathVariable UUID id,
             @RequestParam(required = false) UUID userId) {
         return ResponseEntity.ok(toResponse(getOrderQuery.get(loggedUser.id(), id, userId)));
+    }
+
+    // Cotiza el envio antes de confirmar el pedido; el costo final se recalcula al crearlo.
+    @GetMapping("/shipping-quote")
+    public ResponseEntity<ShippingQuoteResponse> quoteShipping(@RequestParam UUID addressId) {
+        return ResponseEntity.ok(ShippingQuoteResponse.from(quoteShippingQuery.quote(addressId)));
     }
 
     @PostMapping
