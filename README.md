@@ -95,7 +95,11 @@ http://localhost:8080/swagger-ui/index.html
 Hasta que se aprueba el pago, el pedido lo maneja la app. Desde `EN_PREPARACION` lo avanza un **sistema de
 logística externo** publicando comandos en RabbitMQ (exchange `amancay.orders`, routing key `order.command.advance`);
 el backend solo los consume. Para desarrollo, ese sistema es la consola de logística (`DDA2/amancay-mq-console`, ver
-[MENSAJERIA.md](MENSAJERIA.md#correr-local)). El panel de admin solo muestra el estado.
+[MENSAJERIA.md](MENSAJERIA.md#correr-local)). El panel de admin solo muestra el estado; lo único que hace el admin
+es aprobar devoluciones, que dejan el pedido esperando que logística lo retire.
+
+Estados: `CREADO` → `EN_PREPARACION` → `LISTO_PARA_DESPACHAR` → `DESPACHADO` → `ENTREGADO`, y para una devolución
+aprobada `ESPERANDO_RETIRO` → `RETIRADO` → `DEVUELTO` (detalle en [MENSAJERIA.md](MENSAJERIA.md)).
 
 Cada cambio de estado se publica como evento; el mailer avisa al comprador al confirmarse la compra y cuando el
 pedido se despacha ("tu pedido está en camino"). Sin RabbitMQ la app arranca, pero los pedidos no avanzan desde

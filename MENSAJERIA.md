@@ -2,16 +2,19 @@
 
 Hasta que se aprueba el pago, el pedido lo maneja la app. **Desde `EN_PREPARACION`, el estado lo avanza un sistema
 de logística externo publicando comandos en RabbitMQ**; el backend solo los consume (no expone ningún endpoint para
-avanzar el pedido). Cada cambio de estado se publica como evento para que otros consumidores reaccionen (por ejemplo,
+avanzar el pedido: ni el admin puede). Cada cambio de estado se publica como evento para que otros consumidores reaccionen (por ejemplo,
 el mailer).
 
 ```
-[App, síncrono]                          [RabbitMQ, asíncrono]
-CREADO ──pago aprobado──► EN_PREPARACION ──comando──► DESPACHADO ──comando──► ENTREGADO
-         (stock + estado en la            │                │
-          misma transacción)              │                └─ evento order.status.despachado ─► mail "tu pedido está en camino"
+[App, síncrono]                          [Logística externa, por RabbitMQ]
+CREADO ──pago aprobado──► EN_PREPARACION ──► LISTO_PARA_DESPACHAR ──► DESPACHADO ──► ENTREGADO
+         (stock + estado en la            │                                       │
+          misma transacción)              │                                       └─ evento order.status.despachado
+                                          │                                          ─► mail "tu pedido está en camino"
                                           └─ evento order.status.en_preparacion ─► mail "confirmamos tu compra"
-ENTREGADO ──devolución aprobada (App)──► DEVUELTO
+
+ENTREGADO ──devolución aprobada (App)──► ESPERANDO_RETIRO ──► RETIRADO ──► DEVUELTO
+                                         [Logística externa, por RabbitMQ]
 ```
 
 Quién puede disparar cada transición está en el dominio (`OrderStatus` + `OrderTransitionTrigger`):
@@ -19,9 +22,16 @@ Quién puede disparar cada transición está en el dominio (`OrderStatus` + `Ord
 | Desde | Hacia | Lo dispara |
 |---|---|---|
 | CREADO | EN_PREPARACION | `PAYMENT`: el pago aprobado (`OrderService.markAsPaid`) |
-| EN_PREPARACION | DESPACHADO | `FULFILLMENT`: la cola de logística |
-| DESPACHADO | ENTREGADO | `FULFILLMENT`: la cola de logística |
-| ENTREGADO | DEVUELTO | `RETURN_REQUEST`: la devolución aprobada |
+| EN_PREPARACION | LISTO_PARA_DESPACHAR | `LOGISTICS`: la logística externa (cola) |
+| LISTO_PARA_DESPACHAR | DESPACHADO | `LOGISTICS`: la logística externa (cola) |
+| DESPACHADO | ENTREGADO | `LOGISTICS`: la logística externa (cola) |
+| ENTREGADO | ESPERANDO_RETIRO | `RETURN_REQUEST`: el admin aprueba la solicitud de devolución |
+| ESPERANDO_RETIRO | RETIRADO | `LOGISTICS`: la logística externa (cola) |
+| RETIRADO | DEVUELTO | `LOGISTICS`: la logística externa (cola) |
+
+`orders.status` es un enum nativo de Postgres (`order_status`): los estados `LISTO_PARA_DESPACHAR`,
+`ESPERANDO_RETIRO` y `RETIRADO` se agregaron con [db/order_status_logistica.sql](db/order_status_logistica.sql)
+(ya aplicado en la base compartida; es idempotente).
 
 ## Topología
 
@@ -43,7 +53,7 @@ Productores:
 
 Comando `order.command.advance`:
 ```json
-{ "messageId": "uuid", "orderId": "uuid", "targetStatus": "DESPACHADO", "requestedBy": "logistics-console",
+{ "messageId": "uuid", "orderId": "uuid", "targetStatus": "LISTO_PARA_DESPACHAR", "requestedBy": "logistics-console",
   "requestedAt": "2026-11-14T15:00:00Z" }
 ```
 `orderId` y `targetStatus` son obligatorios. No hace falta el header `__TypeId__`: el tipo sale del parámetro del listener.
@@ -88,6 +98,8 @@ hacia la cola original, una vez corregido el problema.
 
 El setup de RabbitMQ y Mailpit está en el [README](README.md#rabbitmq-y-mails). La consola de logística
 (`DDA2/amancay-mq-console`, fuera del repo) se levanta con `npm install && npm start` y queda en http://localhost:3001.
+Se ingresa con una cuenta admin de Amancay (para leer los pedidos de `GET /api/admin/orders`); los avances los publica
+en RabbitMQ.
 
 ## Patrones
 
