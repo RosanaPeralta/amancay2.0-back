@@ -38,7 +38,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import com.amancay.application.port.in.AdvanceOrderStatusCommand;
 import com.amancay.application.port.in.ApplyOrderStatusCommandUseCase;
 import com.amancay.application.port.in.NotifyOrderStatusChangeUseCase;
-import com.amancay.application.port.out.SendOrderCommandPort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
 import com.amancay.domain.exception.BuyerEmailNotFoundException;
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
@@ -64,9 +63,6 @@ class OrderMessagingIntegrationTest {
         registry.add("spring.rabbitmq.username", RABBIT::getAdminUsername);
         registry.add("spring.rabbitmq.password", RABBIT::getAdminPassword);
     }
-
-    @Autowired
-    private SendOrderCommandPort sendOrderCommandPort;
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
@@ -117,17 +113,6 @@ class OrderMessagingIntegrationTest {
         assertThat(dead.getMessageProperties().<String>getHeader(RepublishMessageRecoverer.X_ORIGINAL_ROUTING_KEY))
                 .isEqualTo("order.status.despachado");
         assertThat(notifyUseCase.received).hasSize(1);
-    }
-
-    @Test
-    void commandSentByTheBackendIsAppliedByTheConsumer() {
-        AdvanceOrderStatusCommand command = new AdvanceOrderStatusCommand(UUID.randomUUID(), UUID.randomUUID(),
-                OrderStatus.DESPACHADO, "admin:test", Instant.parse("2026-11-14T12:00:00Z"));
-
-        sendOrderCommandPort.send(command);
-
-        waitUntil(() -> !applyUseCase.received.isEmpty());
-        assertThat(applyUseCase.received).containsExactly(command);
     }
 
     @Test

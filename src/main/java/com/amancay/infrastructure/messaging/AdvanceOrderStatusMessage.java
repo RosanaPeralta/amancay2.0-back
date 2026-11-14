@@ -6,15 +6,10 @@ import java.util.UUID;
 import com.amancay.application.port.in.AdvanceOrderStatusCommand;
 import com.amancay.domain.model.OrderStatus;
 
-// Forma en la que viaja AdvanceOrderStatusCommand por RabbitMQ (JSON). Lo publican el
-// backend (boton del admin) y la consola de logistica.
+// Forma en la que viaja AdvanceOrderStatusCommand por RabbitMQ (JSON). Lo publica la
+// logistica externa (por ejemplo la consola de logistica); el backend solo lo consume.
 public record AdvanceOrderStatusMessage(UUID messageId, UUID orderId, OrderStatus targetStatus, String requestedBy,
         Instant requestedAt) {
-
-    public static AdvanceOrderStatusMessage from(AdvanceOrderStatusCommand command) {
-        return new AdvanceOrderStatusMessage(command.commandId(), command.orderId(), command.targetStatus(),
-                command.requestedBy(), command.requestedAt());
-    }
 
     // orderId y targetStatus son obligatorios; el resto se completa si falta.
     public AdvanceOrderStatusCommand toCommand(Instant now) {

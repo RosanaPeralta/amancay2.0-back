@@ -14,10 +14,8 @@ import org.junit.jupiter.api.Test;
 
 import com.amancay.application.port.in.AdvanceOrderStatusCommand;
 import com.amancay.application.port.in.ApplyOrderStatusCommandUseCase.Result;
-import com.amancay.application.service.fake.Admins;
 import com.amancay.application.service.fake.InMemoryOrderRepository;
 import com.amancay.domain.event.OrderStatusChangedEvent;
-import com.amancay.domain.exception.AdminRequiredException;
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
 import com.amancay.domain.exception.OrderNotFoundException;
 import com.amancay.domain.model.OrderFixtures;
@@ -29,69 +27,10 @@ class OrderFulfillmentServiceTest {
     private static final Instant NOW = Instant.parse("2026-11-14T12:00:00Z");
 
     private final InMemoryOrderRepository orders = new InMemoryOrderRepository();
-    private final List<AdvanceOrderStatusCommand> sentCommands = new ArrayList<>();
     private final List<OrderStatusChangedEvent> publishedEvents = new ArrayList<>();
 
-    private final OrderFulfillmentService service = new OrderFulfillmentService(orders, sentCommands::add,
-            publishedEvents::add, Admins.guard(), Clock.fixed(NOW, ZoneOffset.UTC));
-
-    @Test
-    void adminRequestQueuesTheCommandWithoutChangingTheOrder() {
-        UUID orderId = order(OrderStatus.EN_PREPARACION);
-
-        AdvanceOrderStatusCommand command = service.requestAdvance(Admins.ADMIN_ID, orderId, OrderStatus.DESPACHADO);
-
-        assertThat(command.commandId()).isNotNull();
-        assertThat(command.orderId()).isEqualTo(orderId);
-        assertThat(command.targetStatus()).isEqualTo(OrderStatus.DESPACHADO);
-        assertThat(command.requestedBy()).isEqualTo("admin:" + Admins.ADMIN_ID);
-        assertThat(command.requestedAt()).isEqualTo(NOW);
-        assertThat(sentCommands).containsExactly(command);
-        assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.EN_PREPARACION);
-        assertThat(publishedEvents).isEmpty();
-    }
-
-    @Test
-    void adminCannotQueueTheStepThatBelongsToThePayment() {
-        UUID orderId = order(OrderStatus.CREADO);
-
-        assertThatThrownBy(() -> service.requestAdvance(Admins.ADMIN_ID, orderId, OrderStatus.EN_PREPARACION))
-                .isInstanceOf(InvalidOrderStatusTransitionException.class);
-        assertThat(sentCommands).isEmpty();
-    }
-
-    @Test
-    void adminCannotQueueAReturn() {
-        UUID orderId = order(OrderStatus.ENTREGADO);
-
-        assertThatThrownBy(() -> service.requestAdvance(Admins.ADMIN_ID, orderId, OrderStatus.DEVUELTO))
-                .isInstanceOf(InvalidOrderStatusTransitionException.class);
-        assertThat(sentCommands).isEmpty();
-    }
-
-    @Test
-    void adminCannotQueueASkippedStep() {
-        UUID orderId = order(OrderStatus.EN_PREPARACION);
-
-        assertThatThrownBy(() -> service.requestAdvance(Admins.ADMIN_ID, orderId, OrderStatus.ENTREGADO))
-                .isInstanceOf(InvalidOrderStatusTransitionException.class);
-        assertThat(sentCommands).isEmpty();
-    }
-
-    @Test
-    void buyerCannotQueueAStatusChange() {
-        UUID orderId = order(OrderStatus.EN_PREPARACION);
-
-        assertThatThrownBy(() -> service.requestAdvance(UUID.randomUUID(), orderId, OrderStatus.DESPACHADO))
-                .isInstanceOf(AdminRequiredException.class);
-        assertThat(sentCommands).isEmpty();
-    }
-
-    @Test
-    void requestForAnUnknownOrderIsNotFound() {
-        assertThatThrownBy(() -> service.requestAdvance(Admins.ADMIN_ID, UUID.randomUUID(), OrderStatus.DESPACHADO))
-                .isInstanceOf(OrderNotFoundException.class);
-    }
+    private final OrderFulfillmentService service = new OrderFulfillmentService(orders, publishedEvents::add,
+            Clock.fixed(NOW, ZoneOffset.UTC));
 
     @Test
     void applyingTheCommandPersistsTheStatusAndPublishesTheEvent() {
