@@ -25,7 +25,6 @@ import com.amancay.domain.model.PageResult;
 import com.amancay.domain.model.Product;
 import com.amancay.domain.model.ProductFilter;
 import com.amancay.domain.model.ProductSort;
-import com.amancay.domain.model.ProductSummary;
 import com.amancay.domain.model.Slug;
 
 @Service
@@ -47,8 +46,8 @@ public class ProductService implements ListProductsQuery, GetProductQuery, Creat
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<ProductSummary> list(ProductFilter filter, ProductSort sort, PageQuery page) {
-        return productRepository.findSummaries(filter, sort, page);
+    public PageResult<Product> list(ProductFilter filter, ProductSort sort, PageQuery page) {
+        return productRepository.findPage(filter, sort, page);
     }
 
     @Override

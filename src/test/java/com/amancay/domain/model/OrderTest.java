@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import java.time.Instant;
 
 import org.junit.jupiter.api.Test;
 
@@ -100,4 +101,54 @@ class OrderTest {
         assertThatThrownBy(() -> order.changeStatus(OrderStatus.ENTREGADO))
                 .isInstanceOf(InvalidOrderStatusTransitionException.class);
     }
+
+    @Test
+    void getDeliveredAtReturnsTheDeliveryTimestamp() {
+        Instant deliveredAt = Instant.parse("2026-11-05T16:30:00Z");
+
+        Order order = orderWithHistory(List.of(
+                new OrderStatusChange(UUID.randomUUID(), OrderStatus.EN_PREPARACION,
+                        Instant.parse("2026-11-02T09:30:00Z")),
+                new OrderStatusChange(UUID.randomUUID(), OrderStatus.DESPACHADO,
+                        Instant.parse("2026-11-03T14:00:00Z")),
+                new OrderStatusChange(UUID.randomUUID(), OrderStatus.ENTREGADO, deliveredAt)));
+
+        assertThat(order.getDeliveredAt()).contains(deliveredAt);
+    }
+
+    @Test
+    void getDeliveredAtReturnsEmptyWhenOrderWasNotDelivered() {
+        Order order = orderWithHistory(List.of(
+                new OrderStatusChange(UUID.randomUUID(), OrderStatus.EN_PREPARACION,
+                        Instant.parse("2026-11-02T09:30:00Z")),
+                new OrderStatusChange(UUID.randomUUID(), OrderStatus.DESPACHADO,
+                        Instant.parse("2026-11-03T14:00:00Z"))));
+
+        assertThat(order.getDeliveredAt()).isEmpty();
+    }
+
+    @Test
+    void getDeliveredAtReturnsEmptyWhenDeliveryTimestampIsNull() {
+        Order order = orderWithHistory(List.of(
+                new OrderStatusChange(UUID.randomUUID(), OrderStatus.ENTREGADO, null)));
+
+        assertThat(order.getDeliveredAt()).isEmpty();
+    }
+
+    private Order orderWithHistory(List<OrderStatusChange> history) {
+        return new Order(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                OrderFixtures.ADDRESS,
+                OrderStatus.ENTREGADO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                Instant.now(),
+                Instant.now(),
+                List.of(OrderItem.create(UUID.randomUUID(), 1, BigDecimal.TEN)),
+                history);
+    }
+
 }

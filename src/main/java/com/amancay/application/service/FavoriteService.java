@@ -22,7 +22,7 @@ import com.amancay.domain.exception.ProductNotFoundException;
 import com.amancay.domain.model.Favorite;
 import com.amancay.domain.model.PageQuery;
 import com.amancay.domain.model.PageResult;
-import com.amancay.domain.model.ProductSummary;
+import com.amancay.domain.model.Product;
 
 @Service
 public class FavoriteService implements CreateFavoriteUseCase, DeleteFavoriteUseCase, ListFavoritesQuery {
@@ -38,7 +38,7 @@ public class FavoriteService implements CreateFavoriteUseCase, DeleteFavoriteUse
     @Override
     @Transactional
     public FavoriteProduct create(UUID userId, UUID productId) {
-        ProductSummary product = productRepository.findSummaryById(productId)
+        Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ProductNotFoundException(productId));
         if (favoriteRepository.existsByUserIdAndProductId(userId, productId)) {
             throw new DuplicateFavoriteException(productId);
@@ -59,8 +59,8 @@ public class FavoriteService implements CreateFavoriteUseCase, DeleteFavoriteUse
     public PageResult<FavoriteProduct> list(UUID userId, PageQuery page) {
         PageResult<Favorite> favorites = favoriteRepository.findByUserId(userId, page);
         Set<UUID> productIds = favorites.content().stream().map(Favorite::getProductId).collect(Collectors.toSet());
-        Map<UUID, ProductSummary> productsById = productRepository.findSummariesById(productIds).stream()
-                .collect(Collectors.toMap(ProductSummary::id, Function.identity()));
+        Map<UUID, Product> productsById = productRepository.findAllById(productIds).stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
         // El producto nunca falta: la FK con ON DELETE CASCADE borra el favorito junto con el producto.
         return favorites.map(favorite -> new FavoriteProduct(favorite, productsById.get(favorite.getProductId())));
     }

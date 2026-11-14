@@ -121,6 +121,12 @@ public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCas
     @Transactional
     public Order changeStatus(UUID requesterId, UUID orderId, OrderStatus newStatus) {
         adminGuard.requireAdmin(requesterId);
+
+        if (newStatus == OrderStatus.DEVUELTO) {
+            throw new IllegalArgumentException(
+                    "Orders can only be marked as returned through an approved return request");
+        }
+
         return applyStatus(orderId, newStatus);
     }
 

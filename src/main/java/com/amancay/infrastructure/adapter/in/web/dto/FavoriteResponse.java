@@ -6,18 +6,20 @@ import java.util.UUID;
 import com.amancay.application.port.in.FavoriteProduct;
 
 /**
- * Favorito con lo mínimo del producto para dibujar la tarjeta. Se arma con su propio record y no
- * con {@code ProductSummaryResponse} para no depender del contrato de Productos.
+ * Favorito del usuario. Los campos planos se mantienen por compatibilidad; {@code product} trae el
+ * producto completo (precio, imagenes, descuento) para dibujar la misma tarjeta del catalogo.
  */
 public record FavoriteResponse(
         UUID productId,
         String name,
         String slug,
         boolean active,
-        Instant createdAt) {
+        Instant createdAt,
+        ProductResponse product) {
 
     public static FavoriteResponse from(FavoriteProduct favorite) {
-        return new FavoriteResponse(favorite.favorite().getProductId(), favorite.product().name(),
-                favorite.product().slug(), favorite.product().active(), favorite.favorite().getCreatedAt());
+        return new FavoriteResponse(favorite.favorite().getProductId(), favorite.product().getName(),
+                favorite.product().getSlug(), favorite.product().isActive(), favorite.favorite().getCreatedAt(),
+                ProductResponse.from(favorite.product()));
     }
 }
