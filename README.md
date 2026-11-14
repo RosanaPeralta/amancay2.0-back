@@ -101,8 +101,9 @@ es aprobar devoluciones, que dejan el pedido esperando que logística lo retire.
 Estados: `CREADO` → `EN_PREPARACION` → `LISTO_PARA_DESPACHAR` → `DESPACHADO` → `ENTREGADO`, y para una devolución
 aprobada `ESPERANDO_RETIRO` → `RETIRADO` → `DEVUELTO` (detalle en [MENSAJERIA.md](MENSAJERIA.md)).
 
-Cada cambio de estado se publica como evento; el mailer avisa al comprador al confirmarse la compra y cuando el
-pedido se despacha ("tu pedido está en camino"). Sin RabbitMQ la app arranca, pero los pedidos no avanzan desde
+Cada cambio de estado se publica como evento; el mailer avisa al comprador al confirmarse la compra, cuando el
+pedido se despacha, cuando se entrega y cuando logística va a retirar una devolución (ver
+[Mails que se mandan](#mails-que-se-mandan)). Sin RabbitMQ la app arranca, pero los pedidos no avanzan desde
 `EN_PREPARACION` y no salen los mails.
 
 ### Setup local (Docker)
@@ -166,6 +167,46 @@ Los defaults sirven para el setup local de arriba; solo hace falta tocarlas para
 | `MAIL_SMTP_AUTH` / `MAIL_SMTP_STARTTLS` | `false` / `false` | `true` y `true` para un SMTP real (por ejemplo Gmail, puerto 587) |
 
 Topología, contratos de los mensajes, dead letter queues y patrones: ver [MENSAJERIA.md](MENSAJERIA.md).
+
+### Mails que se mandan
+
+| Estado nuevo del pedido | Mail |
+|---|---|
+| `EN_PREPARACION` | "Confirmamos tu compra" |
+| `DESPACHADO` | "Tu pedido está en camino", con la dirección de envío |
+| `ENTREGADO` | "Tu pedido fue entregado", con el plazo de 10 días para pedir una devolución |
+| `ESPERANDO_RETIRO` | "Vamos a retirar tu pedido": se aprobó la devolución y logística pasa a buscarlo |
+
+Van al email de la cuenta del comprador, en HTML con la identidad de Amancay (colores, tipografía y logo, que va
+adjunto dentro del mail) y en texto plano como alternativa. La plantilla está en `OrderMailHtml`; sumar otro mail es
+sumar una subclase de `OrderStatusMail`.
+
+### Mandar mails reales con Gmail
+
+Mailpit solo los atrapa. Para que lleguen de verdad, usar una cuenta de Gmail con una **contraseña de aplicación**
+(Gmail no acepta la contraseña normal por SMTP):
+
+1. Con la cuenta de Gmail, activar la **verificación en 2 pasos**: https://myaccount.google.com/signinoptions/twosv
+2. Crear una **contraseña de aplicación**: https://myaccount.google.com/apppasswords → ponerle un nombre (por ejemplo
+   "Amancay") → **Crear**. Google muestra 16 letras una sola vez: esa es `MAIL_PASSWORD` (sin los espacios).
+3. Agregar al `.env`:
+
+```properties
+MAIL_ENABLED=true
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=tu-cuenta@gmail.com
+MAIL_PASSWORD=abcdefghijklmnop
+MAIL_SMTP_AUTH=true
+MAIL_SMTP_STARTTLS=true
+MAIL_FROM=Amancay <tu-cuenta@gmail.com>
+```
+
+4. Reiniciar el backend. Si el usuario o la contraseña están mal, el log muestra `AuthenticationFailedException`
+   y el evento termina en `amancay.notifications.order-status.dlq`.
+
+`MAIL_FROM` tiene que ser la misma cuenta (Gmail reemplaza cualquier otro remitente). Gmail permite unos 500 mails
+por día, de sobra para probar. Para volver a Mailpit, borrar esas líneas (o `MAIL_ENABLED=false` para solo loguear).
 
 ## Productos
 

@@ -108,7 +108,7 @@ en RabbitMQ.
 | **State** | `OrderStatus`: a qué estado puede pasar cada uno y quién dispara el paso (`OrderTransitionTrigger`) |
 | **Command** | `AdvanceOrderStatusCommand`: el pedido de cambio viaja por la cola y lo ejecuta otro componente |
 | **Observer / Publish-Subscribe** | `OrderStatusChangedEvent` → exchange topic → N suscriptores (hoy, el mailer) |
-| **Strategy** | `OrderStatusMail`: un mail por estado (`PurchaseConfirmedMail`, `OrderDispatchedMail`), elegido por `OrderStatusNotificationService` |
+| **Strategy** | `OrderStatusMail`: un mail por estado (`PurchaseConfirmedMail`, `OrderDispatchedMail`, `OrderDeliveredMail`, `ReturnPickupScheduledMail`), elegido por `OrderStatusNotificationService` |
 | **Template Method** | `OrderStatusMail.build()`: estructura común del mail; cada subclase completa asunto, intro y cierre |
 | **Adapter** (puertos y adaptadores) | `PublishOrderEventPort` → `SpringOrderEventPublisher` + `RabbitOrderEventRelay`, `MailSenderPort` → `SmtpMailSender` / `LoggingMailSender`; los listeners de RabbitMQ son adaptadores de entrada |
 | **Idempotent Consumer / Dead Letter Channel** | los listeners y las DLQ |
