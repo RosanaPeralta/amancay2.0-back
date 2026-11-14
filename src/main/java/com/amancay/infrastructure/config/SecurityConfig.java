@@ -116,6 +116,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Lo llama Mercado Pago: se valida con la firma x-signature, no con JWT.
+                        .requestMatchers(HttpMethod.POST, "/api/webhooks/mercadopago").permitAll()
                         .requestMatchers("/api/me/**", "/api/admin/**", "/api/orders/**", "/api/payments/**")
                         .authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/products/**", "/api/categories/**", "/api/discounts/**")

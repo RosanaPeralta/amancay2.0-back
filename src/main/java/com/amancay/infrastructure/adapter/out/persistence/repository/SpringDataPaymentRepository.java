@@ -1,6 +1,7 @@
 package com.amancay.infrastructure.adapter.out.persistence.repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,4 +15,6 @@ public interface SpringDataPaymentRepository extends JpaRepository<PaymentJpaEnt
     List<PaymentJpaEntity> findByStatusOrderByCreatedAtAsc(PaymentStatus status);
 
     boolean existsByOrderIdAndStatus(UUID orderId, PaymentStatus status);
+
+    Optional<PaymentJpaEntity> findByExternalId(String externalId);
 }
