@@ -57,10 +57,10 @@ class OrderTest {
     void changeStatusFollowsTheFullHappyPath() {
         Order order = OrderFixtures.newOrder();
 
-        order.changeStatus(OrderStatus.EN_PREPARACION);
-        order.changeStatus(OrderStatus.DESPACHADO);
-        order.changeStatus(OrderStatus.ENTREGADO);
-        order.changeStatus(OrderStatus.DEVUELTO);
+        order.changeStatus(OrderStatus.EN_PREPARACION, OrderTransitionTrigger.PAYMENT);
+        order.changeStatus(OrderStatus.DESPACHADO, OrderTransitionTrigger.FULFILLMENT);
+        order.changeStatus(OrderStatus.ENTREGADO, OrderTransitionTrigger.FULFILLMENT);
+        order.changeStatus(OrderStatus.DEVUELTO, OrderTransitionTrigger.RETURN_REQUEST);
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.DEVUELTO);
         assertThat(order.getStatusHistory()).extracting(OrderStatusChange::status)
@@ -73,19 +73,51 @@ class OrderTest {
     void changeStatusRejectsSkippingAStep() {
         Order order = OrderFixtures.newOrder();
 
-        assertThatThrownBy(() -> order.changeStatus(OrderStatus.DESPACHADO))
+        assertThatThrownBy(() -> order.changeStatus(OrderStatus.DESPACHADO, OrderTransitionTrigger.PAYMENT))
                 .isInstanceOf(InvalidOrderStatusTransitionException.class);
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CREADO);
         assertThat(order.getStatusHistory()).isEmpty();
     }
 
     @Test
+    void onlyAnApprovedPaymentMovesACreatedOrderToPreparation() {
+        Order order = OrderFixtures.newOrder();
+
+        assertThatThrownBy(() -> order.changeStatus(OrderStatus.EN_PREPARACION, OrderTransitionTrigger.FULFILLMENT))
+                .isInstanceOf(InvalidOrderStatusTransitionException.class)
+                .hasMessageContaining("FULFILLMENT");
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CREADO);
+        assertThat(order.getStatusHistory()).isEmpty();
+    }
+
+    @Test
+    void onlyTheFulfillmentQueueDispatchesAnOrder() {
+        Order order = OrderFixtures.newOrder();
+        order.changeStatus(OrderStatus.EN_PREPARACION, OrderTransitionTrigger.PAYMENT);
+
+        assertThatThrownBy(() -> order.changeStatus(OrderStatus.DESPACHADO, OrderTransitionTrigger.PAYMENT))
+                .isInstanceOf(InvalidOrderStatusTransitionException.class);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.EN_PREPARACION);
+    }
+
+    @Test
+    void eachStatusDeclaresWhoAdvancesIt() {
+        assertThat(OrderStatus.CREADO.isAdvancedBy(OrderTransitionTrigger.PAYMENT)).isTrue();
+        assertThat(OrderStatus.EN_PREPARACION.isAdvancedBy(OrderTransitionTrigger.FULFILLMENT)).isTrue();
+        assertThat(OrderStatus.DESPACHADO.isAdvancedBy(OrderTransitionTrigger.FULFILLMENT)).isTrue();
+        assertThat(OrderStatus.ENTREGADO.isAdvancedBy(OrderTransitionTrigger.RETURN_REQUEST)).isTrue();
+        for (OrderTransitionTrigger trigger : OrderTransitionTrigger.values()) {
+            assertThat(OrderStatus.DEVUELTO.isAdvancedBy(trigger)).isFalse();
+        }
+    }
+
+    @Test
     void changeStatusRejectsGoingBackwards() {
         Order order = OrderFixtures.newOrder();
-        order.changeStatus(OrderStatus.EN_PREPARACION);
-        order.changeStatus(OrderStatus.DESPACHADO);
+        order.changeStatus(OrderStatus.EN_PREPARACION, OrderTransitionTrigger.PAYMENT);
+        order.changeStatus(OrderStatus.DESPACHADO, OrderTransitionTrigger.FULFILLMENT);
 
-        assertThatThrownBy(() -> order.changeStatus(OrderStatus.CREADO))
+        assertThatThrownBy(() -> order.changeStatus(OrderStatus.CREADO, OrderTransitionTrigger.FULFILLMENT))
                 .isInstanceOf(InvalidOrderStatusTransitionException.class);
         assertThat(order.getStatus()).isEqualTo(OrderStatus.DESPACHADO);
     }
@@ -93,12 +125,12 @@ class OrderTest {
     @Test
     void devueltoIsATerminalState() {
         Order order = OrderFixtures.newOrder();
-        order.changeStatus(OrderStatus.EN_PREPARACION);
-        order.changeStatus(OrderStatus.DESPACHADO);
-        order.changeStatus(OrderStatus.ENTREGADO);
-        order.changeStatus(OrderStatus.DEVUELTO);
+        order.changeStatus(OrderStatus.EN_PREPARACION, OrderTransitionTrigger.PAYMENT);
+        order.changeStatus(OrderStatus.DESPACHADO, OrderTransitionTrigger.FULFILLMENT);
+        order.changeStatus(OrderStatus.ENTREGADO, OrderTransitionTrigger.FULFILLMENT);
+        order.changeStatus(OrderStatus.DEVUELTO, OrderTransitionTrigger.RETURN_REQUEST);
 
-        assertThatThrownBy(() -> order.changeStatus(OrderStatus.ENTREGADO))
+        assertThatThrownBy(() -> order.changeStatus(OrderStatus.ENTREGADO, OrderTransitionTrigger.FULFILLMENT))
                 .isInstanceOf(InvalidOrderStatusTransitionException.class);
     }
 

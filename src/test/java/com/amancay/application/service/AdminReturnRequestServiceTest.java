@@ -73,11 +73,12 @@ class AdminReturnRequestServiceTest {
         assertThat(orders.findById(orderId).orElseThrow().getStatus())
                 .isEqualTo(OrderStatus.DEVUELTO);
 
-        assertThat(publishedEvents).containsExactly(
-                new OrderStatusChangedEvent(
-                        orderId,
-                        OrderStatus.ENTREGADO,
-                        OrderStatus.DEVUELTO));
+        assertThat(publishedEvents).singleElement().satisfies(event -> {
+            assertThat(event.orderId()).isEqualTo(orderId);
+            assertThat(event.previousStatus()).isEqualTo(OrderStatus.ENTREGADO);
+            assertThat(event.newStatus()).isEqualTo(OrderStatus.DEVUELTO);
+            assertThat(event.occurredAt()).isEqualTo(NOW);
+        });
     }
 
     @Test

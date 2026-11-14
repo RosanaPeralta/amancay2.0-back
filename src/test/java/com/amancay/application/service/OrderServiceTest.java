@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -42,6 +44,8 @@ import com.amancay.domain.model.ShippingQuote;
 // Sin Mockito ni Spring: cada puerto de salida se reemplaza por un fake en memoria.
 class OrderServiceTest {
 
+    private static final Instant NOW = Instant.parse("2026-11-14T12:00:00Z");
+
     private final InMemoryOrders orders = new InMemoryOrders();
     private final Map<UUID, LoadProductVariantPort.ProductVariantInfo> variants = new HashMap<>();
     private final Map<UUID, ShippingAddress> addresses = new HashMap<>();
@@ -67,7 +71,7 @@ class OrderServiceTest {
             return new ShippingQuote(new BigDecimal("15.0"), new BigDecimal("12.50"));
         };
         orderService = new OrderService(orders, variantPort, addressPort, requesterPort, eventPort, shippingPort,
-                new AdminGuard(requesterPort));
+                new AdminGuard(requesterPort), Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -208,15 +212,26 @@ class OrderServiceTest {
     @Test
     void changeStatusPersistsTheTransitionAndPublishesAnEvent() {
         UUID orderId = UUID.randomUUID();
+        UUID buyerId = UUID.randomUUID();
+        orders.put(OrderFixtures.persisted(orderId, buyerId, OrderStatus.EN_PREPARACION));
+
+        Order result = orderService.changeStatus(admin(), orderId, OrderStatus.DESPACHADO);
+
+        assertThat(result.getStatus()).isEqualTo(OrderStatus.DESPACHADO);
+        assertThat(orders.findById(orderId).orElseThrow().getStatusHistory())
+                .extracting(OrderStatusChange::status).containsExactly(OrderStatus.DESPACHADO);
+        assertSinglePublishedEvent(orderId, buyerId, OrderStatus.EN_PREPARACION, OrderStatus.DESPACHADO);
+    }
+
+    @Test
+    void adminCannotMoveAnOrderToPreparationWithoutAnApprovedPayment() {
+        UUID orderId = UUID.randomUUID();
         orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
 
-        Order result = orderService.changeStatus(admin(), orderId, OrderStatus.EN_PREPARACION);
-
-        assertThat(result.getStatus()).isEqualTo(OrderStatus.EN_PREPARACION);
-        assertThat(orders.findById(orderId).orElseThrow().getStatusHistory())
-                .extracting(OrderStatusChange::status).containsExactly(OrderStatus.EN_PREPARACION);
-        assertThat(publishedEvents).containsExactly(
-                new OrderStatusChangedEvent(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION));
+        assertThatThrownBy(() -> orderService.changeStatus(admin(), orderId, OrderStatus.EN_PREPARACION))
+                .isInstanceOf(InvalidOrderStatusTransitionException.class);
+        assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.CREADO);
+        assertThat(publishedEvents).isEmpty();
     }
 
     @Test
@@ -244,13 +259,24 @@ class OrderServiceTest {
     @Test
     void markAsPaidMovesTheOrderWithoutAnAdmin() {
         UUID orderId = UUID.randomUUID();
-        orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
+        UUID buyerId = UUID.randomUUID();
+        orders.put(OrderFixtures.persisted(orderId, buyerId, OrderStatus.CREADO));
 
         orderService.markAsPaid(orderId);
 
         assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.EN_PREPARACION);
-        assertThat(publishedEvents).containsExactly(
-                new OrderStatusChangedEvent(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION));
+        assertSinglePublishedEvent(orderId, buyerId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION);
+    }
+
+    private void assertSinglePublishedEvent(UUID orderId, UUID buyerId, OrderStatus previous, OrderStatus next) {
+        assertThat(publishedEvents).singleElement().satisfies(event -> {
+            assertThat(event.eventId()).isNotNull();
+            assertThat(event.orderId()).isEqualTo(orderId);
+            assertThat(event.buyerId()).isEqualTo(buyerId);
+            assertThat(event.previousStatus()).isEqualTo(previous);
+            assertThat(event.newStatus()).isEqualTo(next);
+            assertThat(event.occurredAt()).isEqualTo(NOW);
+        });
     }
 
     private UUID buyer() {

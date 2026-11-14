@@ -54,7 +54,7 @@ class OrderStatusNotificationListenerTest {
                 new BigDecimal("100.00"), List.of(new OrderItem(UUID.randomUUID(), variantId, 2, new BigDecimal("50.00")))));
 
         listener.onOrderStatusChanged(
-                new OrderStatusChangedEvent(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION));
+                event(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION));
 
         assertThat(sentMails).singleElement().satisfies(mail -> {
             assertThat(mail.to()).isEqualTo("buyer@amancay.com");
@@ -69,7 +69,7 @@ class OrderStatusNotificationListenerTest {
         orders.put(orderId, OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.DESPACHADO));
 
         listener.onOrderStatusChanged(
-                new OrderStatusChangedEvent(orderId, OrderStatus.EN_PREPARACION, OrderStatus.DESPACHADO));
+                event(orderId, OrderStatus.EN_PREPARACION, OrderStatus.DESPACHADO));
 
         assertThat(sentMails).isEmpty();
     }
@@ -79,7 +79,7 @@ class OrderStatusNotificationListenerTest {
         UUID orderId = UUID.randomUUID();
 
         assertThatThrownBy(() -> listener.onOrderStatusChanged(
-                new OrderStatusChangedEvent(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION)))
+                event(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION)))
                 .isInstanceOf(OrderNotFoundException.class);
         assertThat(sentMails).isEmpty();
     }
@@ -90,9 +90,13 @@ class OrderStatusNotificationListenerTest {
         orders.put(orderId, OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.EN_PREPARACION));
 
         assertThatThrownBy(() -> listener.onOrderStatusChanged(
-                new OrderStatusChangedEvent(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION)))
+                event(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION)))
                 .isInstanceOf(BuyerEmailNotFoundException.class);
         assertThat(sentMails).isEmpty();
+    }
+
+    private static OrderStatusChangedEvent event(UUID orderId, OrderStatus previous, OrderStatus next) {
+        return new OrderStatusChangedEvent(UUID.randomUUID(), orderId, null, previous, next, java.time.Instant.now());
     }
 
     private Map<UUID, OrderItemProduct> describe(Collection<Order> requestedOrders) {

@@ -1,5 +1,6 @@
 package com.amancay.application.service;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -30,6 +31,7 @@ import com.amancay.domain.exception.OrderNotFoundException;
 import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderItem;
 import com.amancay.domain.model.OrderStatus;
+import com.amancay.domain.model.OrderTransitionTrigger;
 import com.amancay.domain.model.ShippingAddress;
 import com.amancay.domain.model.ShippingQuote;
 
@@ -44,11 +46,12 @@ public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCas
     private final PublishOrderEventPort publishOrderEventPort;
     private final ShippingQuotePort shippingQuotePort;
     private final AdminGuard adminGuard;
+    private final Clock clock;
 
     public OrderService(OrderRepositoryPort orderRepository,
             LoadProductVariantPort loadProductVariantPort, LoadShippingAddressPort loadShippingAddressPort,
             LoadRequesterPort loadRequesterPort, PublishOrderEventPort publishOrderEventPort,
-            ShippingQuotePort shippingQuotePort, AdminGuard adminGuard) {
+            ShippingQuotePort shippingQuotePort, AdminGuard adminGuard, Clock clock) {
         this.orderRepository = orderRepository;
         this.loadProductVariantPort = loadProductVariantPort;
         this.loadShippingAddressPort = loadShippingAddressPort;
@@ -56,6 +59,7 @@ public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCas
         this.publishOrderEventPort = publishOrderEventPort;
         this.shippingQuotePort = shippingQuotePort;
         this.adminGuard = adminGuard;
+        this.clock = clock;
     }
 
     @Override
@@ -127,22 +131,23 @@ public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCas
                     "Orders can only be marked as returned through an approved return request");
         }
 
-        return applyStatus(orderId, newStatus);
+        // El admin solo mueve la logistica: EN_PREPARACION lo pone el pago aprobado.
+        return applyStatus(orderId, newStatus, OrderTransitionTrigger.FULFILLMENT);
     }
 
     @Override
     @Transactional
     public void markAsPaid(UUID orderId) {
-        applyStatus(orderId, OrderStatus.EN_PREPARACION);
+        applyStatus(orderId, OrderStatus.EN_PREPARACION, OrderTransitionTrigger.PAYMENT);
     }
 
-    private Order applyStatus(UUID orderId, OrderStatus newStatus) {
+    private Order applyStatus(UUID orderId, OrderStatus newStatus, OrderTransitionTrigger trigger) {
         Order order = findOrder(orderId);
         OrderStatus previousStatus = order.getStatus();
-        order.changeStatus(newStatus);
+        order.changeStatus(newStatus, trigger);
         Order saved = orderRepository.save(order);
 
-        publishOrderEventPort.publish(new OrderStatusChangedEvent(saved.getId(), previousStatus, newStatus));
+        publishOrderEventPort.publish(OrderStatusChangedEvent.of(saved, previousStatus, clock.instant()));
         return saved;
     }
 

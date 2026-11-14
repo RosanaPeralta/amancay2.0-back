@@ -3,42 +3,54 @@ package com.amancay.domain.model;
 import java.util.EnumSet;
 import java.util.Set;
 
-// Patron State: cada estado sabe a cuales puede pasar.
+// Patron State: cada estado sabe a cuales puede pasar y quien dispara ese paso
+// (el pago, la cola de logistica o una devolucion).
 public enum OrderStatus {
-    CREADO {
+    CREADO(OrderTransitionTrigger.PAYMENT) {
         @Override
         public Set<OrderStatus> nextStates() {
             return EnumSet.of(EN_PREPARACION);
         }
     },
-    EN_PREPARACION {
+    EN_PREPARACION(OrderTransitionTrigger.FULFILLMENT) {
         @Override
         public Set<OrderStatus> nextStates() {
             return EnumSet.of(DESPACHADO);
         }
     },
-    DESPACHADO {
+    DESPACHADO(OrderTransitionTrigger.FULFILLMENT) {
         @Override
         public Set<OrderStatus> nextStates() {
             return EnumSet.of(ENTREGADO);
         }
     },
-    ENTREGADO {
+    ENTREGADO(OrderTransitionTrigger.RETURN_REQUEST) {
         @Override
         public Set<OrderStatus> nextStates() {
             return EnumSet.of(DEVUELTO);
         }
     },
-    DEVUELTO {
+    DEVUELTO(null) {
         @Override
         public Set<OrderStatus> nextStates() {
             return EnumSet.noneOf(OrderStatus.class);
         }
     };
 
+    private final OrderTransitionTrigger advancedBy;
+
+    OrderStatus(OrderTransitionTrigger advancedBy) {
+        this.advancedBy = advancedBy;
+    }
+
     public abstract Set<OrderStatus> nextStates();
 
     public boolean canTransitionTo(OrderStatus target) {
         return nextStates().contains(target);
+    }
+
+    // DEVUELTO es final: nadie lo hace avanzar.
+    public boolean isAdvancedBy(OrderTransitionTrigger trigger) {
+        return advancedBy != null && advancedBy == trigger;
     }
 }

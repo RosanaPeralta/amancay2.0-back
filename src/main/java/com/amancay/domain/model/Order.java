@@ -59,8 +59,12 @@ public class Order {
                 subtotal.add(shippingCost), null, null, items, List.of());
     }
 
-    // Valida la transicion con OrderStatus y la registra en el historial.
-    public void changeStatus(OrderStatus newStatus) {
+    // Valida la transicion con OrderStatus (a donde puede ir y quien la dispara) y la
+    // registra en el historial.
+    public void changeStatus(OrderStatus newStatus, OrderTransitionTrigger trigger) {
+        if (!status.isAdvancedBy(trigger)) {
+            throw new InvalidOrderStatusTransitionException(status, newStatus, trigger);
+        }
         if (!status.canTransitionTo(newStatus)) {
             throw new InvalidOrderStatusTransitionException(status, newStatus);
         }
