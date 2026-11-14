@@ -25,6 +25,7 @@ import org.springframework.boot.amqp.autoconfigure.RabbitAutoConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
@@ -36,14 +37,17 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.amancay.application.port.in.AdvanceOrderStatusCommand;
 import com.amancay.application.port.in.ApplyOrderStatusCommandUseCase;
+import com.amancay.application.port.in.NotifyOrderStatusChangeUseCase;
 import com.amancay.application.port.out.SendOrderCommandPort;
+import com.amancay.domain.event.OrderStatusChangedEvent;
+import com.amancay.domain.exception.BuyerEmailNotFoundException;
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
 import com.amancay.domain.model.OrderStatus;
 import com.amancay.domain.model.OrderTransitionTrigger;
 import com.amancay.infrastructure.config.RabbitMqConfig;
 
 // Los adaptadores de mensajeria contra un RabbitMQ real, con los casos de uso reemplazados
-// por fakes: comandos, mensajes de productores externos, reintentos y dead letter queue.
+// por fakes: comandos, eventos, mensajes de productores externos, reintentos y dead letter queue.
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(classes = OrderMessagingIntegrationTest.MessagingTestApp.class, properties = {
         "amancay.messaging.retry.max-retries=2",
@@ -73,10 +77,46 @@ class OrderMessagingIntegrationTest {
     @Autowired
     private FakeApplyOrderStatusCommand applyUseCase;
 
+    @Autowired
+    private FakeNotifyOrderStatusChange notifyUseCase;
+
+    @Autowired
+    private ApplicationEventPublisher applicationEventPublisher;
+
     @BeforeEach
     void reset() {
         applyUseCase.reset();
+        notifyUseCase.reset();
         amqpAdmin.purgeQueue(RabbitMqTopology.STATUS_COMMANDS_DLQ, false);
+        amqpAdmin.purgeQueue(RabbitMqTopology.ORDER_NOTIFICATIONS_DLQ, false);
+    }
+
+    @Test
+    void statusChangeEventIsRelayedToTheNotificationConsumer() {
+        OrderStatusChangedEvent event = new OrderStatusChangedEvent(UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), OrderStatus.EN_PREPARACION, OrderStatus.DESPACHADO,
+                Instant.parse("2026-11-14T12:00:00Z"));
+
+        applicationEventPublisher.publishEvent(event);
+
+        waitUntil(() -> !notifyUseCase.received.isEmpty());
+        assertThat(notifyUseCase.received).containsExactly(event);
+    }
+
+    @Test
+    void notificationForABuyerWithoutEmailGoesToTheNotificationsDeadLetterQueue() {
+        notifyUseCase.behavior = event -> {
+            throw new BuyerEmailNotFoundException(event.buyerId());
+        };
+
+        applicationEventPublisher.publishEvent(new OrderStatusChangedEvent(UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), OrderStatus.EN_PREPARACION, OrderStatus.DESPACHADO, Instant.now()));
+
+        Message dead = rabbitTemplate.receive(RabbitMqTopology.ORDER_NOTIFICATIONS_DLQ, 10_000);
+        assertThat(dead).isNotNull();
+        assertThat(dead.getMessageProperties().<String>getHeader(RepublishMessageRecoverer.X_ORIGINAL_ROUTING_KEY))
+                .isEqualTo("order.status.despachado");
+        assertThat(notifyUseCase.received).hasSize(1);
     }
 
     @Test
@@ -220,6 +260,23 @@ class OrderMessagingIntegrationTest {
         }
     }
 
+    static final class FakeNotifyOrderStatusChange implements NotifyOrderStatusChangeUseCase {
+
+        final List<OrderStatusChangedEvent> received = new CopyOnWriteArrayList<>();
+        volatile Function<OrderStatusChangedEvent, Boolean> behavior = event -> true;
+
+        void reset() {
+            received.clear();
+            behavior = event -> true;
+        }
+
+        @Override
+        public boolean notify(OrderStatusChangedEvent event) {
+            received.add(event);
+            return behavior.apply(event);
+        }
+    }
+
     @SpringBootConfiguration
     @ImportAutoConfiguration({ JacksonAutoConfiguration.class, RabbitAutoConfiguration.class })
     @Import(RabbitMqConfig.class)
@@ -231,6 +288,11 @@ class OrderMessagingIntegrationTest {
         @Bean
         FakeApplyOrderStatusCommand applyOrderStatusCommandUseCase() {
             return new FakeApplyOrderStatusCommand();
+        }
+
+        @Bean
+        FakeNotifyOrderStatusChange notifyOrderStatusChangeUseCase() {
+            return new FakeNotifyOrderStatusChange();
         }
 
         @Bean

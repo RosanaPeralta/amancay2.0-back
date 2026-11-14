@@ -2,6 +2,7 @@ package com.amancay.infrastructure.adapter.in.event;
 
 import org.springframework.stereotype.Component;
 
+import com.amancay.application.port.out.MailContent;
 import com.amancay.application.port.out.PayableOrderPort.PayableOrder;
 import com.amancay.domain.model.Payment;
 

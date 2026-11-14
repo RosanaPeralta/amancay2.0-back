@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import com.amancay.application.port.out.MailContent;
 import com.amancay.application.port.out.BuyerEmailPort;
 import com.amancay.application.port.out.MailSenderPort;
 import com.amancay.application.port.out.PayableOrderPort;

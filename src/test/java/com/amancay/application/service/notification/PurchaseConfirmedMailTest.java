@@ -1,4 +1,4 @@
-package com.amancay.infrastructure.adapter.in.event;
+package com.amancay.application.service.notification;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -9,15 +9,16 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.amancay.application.port.out.MailContent;
 import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderFixtures;
 import com.amancay.domain.model.OrderItem;
 import com.amancay.domain.model.OrderItemProduct;
 import com.amancay.domain.model.OrderStatus;
 
-class PurchaseConfirmedMailContentTest {
+class PurchaseConfirmedMailTest {
 
-    private final PurchaseConfirmedMailContent mailContent = new PurchaseConfirmedMailContent();
+    private final PurchaseConfirmedMail mailContent = new PurchaseConfirmedMail();
 
     @Test
     void subjectNamesTheOrder() {

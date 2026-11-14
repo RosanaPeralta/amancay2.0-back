@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.amancay.application.port.out.MailContent;
 import com.amancay.application.port.out.PayableOrderPort.PayableOrder;
 import com.amancay.domain.model.Payment;
 import com.amancay.domain.model.PaymentMethod;

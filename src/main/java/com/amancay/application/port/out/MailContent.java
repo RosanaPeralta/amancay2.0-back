@@ -1,4 +1,4 @@
-package com.amancay.infrastructure.adapter.in.event;
+package com.amancay.application.port.out;
 
 public record MailContent(String subject, String body) {
 }
