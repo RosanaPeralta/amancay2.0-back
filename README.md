@@ -9,6 +9,8 @@ Backend de Amancay construido con Java, Spring Boot y Maven.
 - Maven
 - Spring Web, Spring Data JPA, Validation, Lombok
 - PostgreSQL (Supabase)
+- RabbitMQ (Spring AMQP) para el avance de estados del pedido
+- SMTP (Spring Mail) para los mails al comprador
 - OpenAPI / Swagger UI
 
 ## Requisitos
@@ -79,8 +81,28 @@ http://localhost:8080/swagger-ui/index.html
 
 ## Cómo correr el proyecto
 ```bash
+# Infra local (en la raíz de DDA2): RabbitMQ + Mailpit
+docker compose up -d
+
 ./mvnw spring-boot:run
 ```
+
+## Pedidos por cola (RabbitMQ) y mails
+
+Hasta que se aprueba el pago, el pedido lo maneja la app. Desde `EN_PREPARACION` avanza por RabbitMQ:
+`PATCH /api/orders/{id}/status` (admin) encola el pedido de cambio y responde **202**, y un consumidor lo aplica.
+Cada cambio de estado se publica como evento; el mailer avisa al comprador al confirmarse la compra y cuando el
+pedido se despacha ("tu pedido está en camino").
+
+| Variable | Default | Descripción |
+|---|---|---|
+| `RABBITMQ_HOST` / `RABBITMQ_PORT` | `localhost` / `5672` | Broker |
+| `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | `guest` / `guest` | Credenciales |
+| `MESSAGING_MAX_RETRIES` | `2` | Reintentos antes de mandar un mensaje a la dead letter queue |
+| `MAIL_ENABLED` | `false` | `true` manda por SMTP; si no, los mails solo se loguean |
+| `MAIL_HOST` / `MAIL_PORT` | `localhost` / `1025` | SMTP (Mailpit en desarrollo: http://localhost:8025) |
+
+Topología, contratos de los mensajes, dead letter queues y patrones: ver [MENSAJERIA.md](MENSAJERIA.md).
 
 ## Productos
 
@@ -179,7 +201,8 @@ Con `AMANCAY_SECURITY_DEV_USER_ENABLED=true` toda request sin token corre como u
 
 ## Tests
 
-Pruebas unitarias e integración con Testcontainers (requiere Docker):
+Pruebas unitarias e integración con Testcontainers (requiere Docker). `OrderMessagingIntegrationTest` levanta un
+RabbitMQ real y prueba comandos, eventos, reintentos y dead letter queues:
 
 ```bash
 ./mvnw test
