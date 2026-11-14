@@ -18,6 +18,9 @@ public interface PaymentRepositoryPort {
 
     boolean existsByOrderIdAndStatus(UUID orderId, PaymentStatus status);
 
+    // Por id del pago en el proveedor (Mercado Pago).
+    Optional<Payment> findByExternalId(String externalId);
+
     // Devuelve el pago tal como quedo persistido (con id y timestamps asignados).
     Payment save(Payment payment);
 }

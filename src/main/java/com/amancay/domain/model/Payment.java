@@ -16,25 +16,37 @@ public class Payment {
     private PaymentStatus status;
     // Solo para TRANSFERENCIA.
     private String transferReference;
+    // Solo para MERCADO_PAGO: id del pago en Mercado Pago (se completa al aprobarse).
+    private String externalId;
+    // Solo para MERCADO_PAGO: URL del checkout al que se redirige al comprador.
+    private final String checkoutUrl;
     private final Instant createdAt;
     private final Instant updatedAt;
 
     // Reconstruye un pago ya existente (lo usa el adaptador de persistencia).
     public Payment(UUID id, UUID orderId, BigDecimal amount, PaymentMethod method, PaymentStatus status,
             String transferReference, Instant createdAt, Instant updatedAt) {
+        this(id, orderId, amount, method, status, transferReference, null, null, createdAt, updatedAt);
+    }
+
+    public Payment(UUID id, UUID orderId, BigDecimal amount, PaymentMethod method, PaymentStatus status,
+            String transferReference, String externalId, String checkoutUrl, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.orderId = orderId;
         this.amount = amount;
         this.method = method;
         this.status = status;
         this.transferReference = transferReference;
+        this.externalId = externalId;
+        this.checkoutUrl = checkoutUrl;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
     // Un intento nuevo nace con el resultado que devolvio la estrategia de cobro.
     public static Payment attempt(UUID orderId, BigDecimal amount, PaymentMethod method, PaymentResult result) {
-        return new Payment(null, orderId, amount, method, result.status(), null, null, null);
+        return new Payment(null, orderId, amount, method, result.status(), null, null, result.checkoutUrl(), null,
+                null);
     }
 
     public boolean isApproved() {
@@ -62,6 +74,21 @@ public class Payment {
             throw new IllegalStateException("Only a pending payment can be confirmed");
         }
         this.status = decision;
+    }
+
+    // Mercado Pago informo el pago como aprobado: queda aprobado sin intervencion del admin.
+    public void approveFromProvider(String externalId) {
+        if (method != PaymentMethod.MERCADO_PAGO) {
+            throw new IllegalArgumentException("Only Mercado Pago payments are approved by the provider");
+        }
+        if (status != PaymentStatus.PENDIENTE) {
+            throw new IllegalStateException("Only a pending payment can be approved");
+        }
+        if (externalId == null || externalId.isBlank()) {
+            throw new IllegalArgumentException("externalId is required");
+        }
+        this.externalId = externalId;
+        this.status = PaymentStatus.APROBADO;
     }
 
     // Se puede reemplazar si se vuelve a enviar antes de que el admin confirme.
@@ -97,6 +124,14 @@ public class Payment {
 
     public String getTransferReference() {
         return transferReference;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public String getCheckoutUrl() {
+        return checkoutUrl;
     }
 
     public Instant getCreatedAt() {
