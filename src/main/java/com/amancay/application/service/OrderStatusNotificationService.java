@@ -61,7 +61,7 @@ public class OrderStatusNotificationService implements NotifyOrderStatusChangeUs
         }
         Map<UUID, OrderItemProduct> products = describeOrderItems.describe(List.of(order));
         MailContent content = mail.build(order, products);
-        mailSender.send(buyerEmail, content.subject(), content.body());
+        mailSender.send(buyerEmail, content);
         return true;
     }
 }

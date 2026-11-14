@@ -40,9 +40,30 @@ class OrderDispatchedMailTest {
         MailContent content = mail.build(order, Map.of(variantId,
                 new OrderItemProduct(variantId, UUID.randomUUID(), "Maceta de barro", null)));
 
-        assertThat(content.subject()).contains(orderId.toString(), "en camino");
-        assertThat(content.body()).contains("despachado", "Av. Corrientes 1234 5B, CABA, Buenos Aires, C1043, Argentina",
+        assertThat(content.subject()).contains(orderId.toString().substring(0, 8), "en camino");
+        assertThat(content.body()).contains("salió del depósito", "Av. Corrientes 1234 5B, CABA, Buenos Aires, C1043, Argentina",
                 "Maceta de barro x2", "Total: 112.50", "Gracias por comprar en Amancay.");
+    }
+
+    @Test
+    void alsoBuildsAnAmancayStyledHtmlVersion() {
+        UUID orderId = UUID.randomUUID();
+        UUID variantId = UUID.randomUUID();
+        Order order = new Order(orderId, UUID.randomUUID(), UUID.randomUUID(),
+                new ShippingAddress("Av. Corrientes", "1234", null, "CABA", "Buenos Aires", "Argentina", "C1043"),
+                OrderStatus.DESPACHADO, new BigDecimal("100"), new BigDecimal("12.5"), new BigDecimal("112.5"),
+                Instant.now(), Instant.now(),
+                List.of(new OrderItem(UUID.randomUUID(), variantId, 2, new BigDecimal("50.00"))), List.of());
+
+        MailContent content = mail.build(order, Map.of(variantId,
+                new OrderItemProduct(variantId, UUID.randomUUID(), "Maceta <grande> & plato", "https://img/maceta.png")));
+
+        assertThat(content.hasHtml()).isTrue();
+        assertThat(content.htmlBody()).contains("cid:" + MailContent.LOGO_CID, "#2e5e4e",
+                "Pedido #" + orderId.toString().substring(0, 8), "¡Tu pedido está en camino!", "Despachado",
+                "Maceta &lt;grande&gt; &amp; plato", "https://img/maceta.png", "$112.50", "$12.50",
+                "Av. Corrientes 1234, CABA");
+        assertThat(content.htmlBody()).doesNotContain("<grande>");
     }
 
     @Test

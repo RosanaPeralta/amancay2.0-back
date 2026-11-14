@@ -16,11 +16,16 @@ public class PurchaseConfirmedMail extends OrderStatusMail {
 
     @Override
     protected String subject(Order order) {
-        return "Confirmamos tu compra #" + order.getId();
+        return "Confirmamos tu compra #" + orderNumber(order);
+    }
+
+    @Override
+    protected String headline(Order order) {
+        return "¡Gracias por tu compra!";
     }
 
     @Override
     protected String intro(Order order) {
-        return "Tu compra se realizo con exito y ya esta en preparacion.";
+        return "Tu pago se aprobó y ya estamos preparando tu pedido. Te avisamos cuando salga del depósito.";
     }
 }

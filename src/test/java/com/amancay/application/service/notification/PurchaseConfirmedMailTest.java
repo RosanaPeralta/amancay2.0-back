@@ -27,7 +27,7 @@ class PurchaseConfirmedMailTest {
 
         MailContent content = mailContent.build(order, Map.of());
 
-        assertThat(content.subject()).contains(orderId.toString());
+        assertThat(content.subject()).contains(orderId.toString().substring(0, 8));
     }
 
     @Test

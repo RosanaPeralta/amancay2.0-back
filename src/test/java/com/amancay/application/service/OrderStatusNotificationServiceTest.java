@@ -51,7 +51,7 @@ class OrderStatusNotificationServiceTest {
         assertThat(sent).isTrue();
         assertThat(sentMails).singleElement().satisfies(mail -> {
             assertThat(mail.to()).isEqualTo("buyer@amancay.com");
-            assertThat(mail.subject()).contains("Confirmamos tu compra", orderId.toString());
+            assertThat(mail.subject()).contains("Confirmamos tu compra", orderId.toString().substring(0, 8));
             assertThat(mail.body()).contains("Maceta de barro");
         });
     }
@@ -74,7 +74,7 @@ class OrderStatusNotificationServiceTest {
     void doesNotSendAnythingForStatusesWithoutAMail() {
         UUID orderId = UUID.randomUUID();
 
-        boolean sent = service.notify(event(orderId, OrderStatus.DESPACHADO, OrderStatus.ENTREGADO));
+        boolean sent = service.notify(event(orderId, OrderStatus.EN_PREPARACION, OrderStatus.LISTO_PARA_DESPACHAR));
 
         assertThat(sent).isFalse();
         assertThat(sentMails).isEmpty();
