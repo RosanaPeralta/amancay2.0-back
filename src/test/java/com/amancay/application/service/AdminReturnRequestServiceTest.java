@@ -57,7 +57,7 @@ class AdminReturnRequestServiceTest {
     }
 
     @Test
-    void adminCanApproveReturnAndOrderBecomesDevuelto() {
+    void adminCanApproveReturnAndOrderWaitsForPickup() {
         UUID orderId = UUID.randomUUID();
         UUID requestId = UUID.randomUUID();
 
@@ -71,12 +71,12 @@ class AdminReturnRequestServiceTest {
         assertThat(result.getResolvedAt()).isEqualTo(NOW);
 
         assertThat(orders.findById(orderId).orElseThrow().getStatus())
-                .isEqualTo(OrderStatus.DEVUELTO);
+                .isEqualTo(OrderStatus.ESPERANDO_RETIRO);
 
         assertThat(publishedEvents).singleElement().satisfies(event -> {
             assertThat(event.orderId()).isEqualTo(orderId);
             assertThat(event.previousStatus()).isEqualTo(OrderStatus.ENTREGADO);
-            assertThat(event.newStatus()).isEqualTo(OrderStatus.DEVUELTO);
+            assertThat(event.newStatus()).isEqualTo(OrderStatus.ESPERANDO_RETIRO);
             assertThat(event.occurredAt()).isEqualTo(NOW);
         });
     }

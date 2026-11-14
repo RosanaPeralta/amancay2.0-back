@@ -15,7 +15,7 @@ public final class RabbitMqTopology {
     public static final String DEAD_LETTER_EXCHANGE = "amancay.orders.dlx";
     public static final String ERROR_ROUTING_KEY_PREFIX = "error.";
 
-    // Comando "avanzar el pedido" (EN_PREPARACION -> DESPACHADO -> ENTREGADO).
+    // Comando "avanzar el pedido" (ver OrderTransitionTrigger.LOGISTICS).
     public static final String ADVANCE_ORDER_ROUTING_KEY = "order.command.advance";
     public static final String STATUS_COMMANDS_QUEUE = "amancay.orders.status-commands";
     public static final String STATUS_COMMANDS_DLQ = STATUS_COMMANDS_QUEUE + ".dlq";

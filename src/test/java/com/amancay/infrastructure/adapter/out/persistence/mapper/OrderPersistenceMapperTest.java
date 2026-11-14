@@ -50,12 +50,12 @@ class OrderPersistenceMapperTest {
         entity.getStatusHistory().getFirst().setId(UUID.randomUUID());
 
         Order reloaded = mapper.toDomain(entity);
-        reloaded.changeStatus(OrderStatus.DESPACHADO, OrderTransitionTrigger.FULFILLMENT);
+        reloaded.changeStatus(OrderStatus.LISTO_PARA_DESPACHAR, OrderTransitionTrigger.LOGISTICS);
         mapper.applyChanges(reloaded, entity);
 
-        assertThat(entity.getStatus()).isEqualTo(OrderStatus.DESPACHADO);
+        assertThat(entity.getStatus()).isEqualTo(OrderStatus.LISTO_PARA_DESPACHAR);
         assertThat(entity.getStatusHistory()).extracting(OrderStatusHistoryJpaEntity::getStatus)
-                .containsExactly(OrderStatus.EN_PREPARACION, OrderStatus.DESPACHADO);
+                .containsExactly(OrderStatus.EN_PREPARACION, OrderStatus.LISTO_PARA_DESPACHAR);
         assertThat(entity.getStatusHistory()).allSatisfy(history -> assertThat(history.getOrder()).isSameAs(entity));
     }
 

@@ -62,7 +62,7 @@ public class AdminReturnRequestService
         }
 
         request.approve(adminId, clock.instant());
-        order.changeStatus(OrderStatus.DEVUELTO, OrderTransitionTrigger.RETURN_REQUEST);
+        order.changeStatus(OrderStatus.ESPERANDO_RETIRO, OrderTransitionTrigger.RETURN_REQUEST);
 
         ReturnRequest savedRequest = returnRequestRepository.save(request);
         Order savedOrder = orderRepository.save(order);

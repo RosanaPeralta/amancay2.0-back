@@ -42,7 +42,7 @@ public class OrderFulfillmentService implements ApplyOrderStatusCommandUseCase {
         }
 
         OrderStatus previousStatus = order.getStatus();
-        order.changeStatus(command.targetStatus(), OrderTransitionTrigger.FULFILLMENT);
+        order.changeStatus(command.targetStatus(), OrderTransitionTrigger.LOGISTICS);
         Order saved = orderRepository.save(order);
         publishOrderEventPort.publish(OrderStatusChangedEvent.of(saved, previousStatus, clock.instant()));
         return Result.APPLIED;

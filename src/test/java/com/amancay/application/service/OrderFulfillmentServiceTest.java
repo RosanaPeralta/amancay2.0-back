@@ -37,16 +37,16 @@ class OrderFulfillmentServiceTest {
         UUID buyerId = UUID.randomUUID();
         UUID orderId = order(OrderStatus.EN_PREPARACION, buyerId);
 
-        Result result = service.apply(command(orderId, OrderStatus.DESPACHADO));
+        Result result = service.apply(command(orderId, OrderStatus.LISTO_PARA_DESPACHAR));
 
         assertThat(result).isEqualTo(Result.APPLIED);
         assertThat(orders.findById(orderId).orElseThrow().getStatusHistory())
-                .extracting(OrderStatusChange::status).containsExactly(OrderStatus.DESPACHADO);
+                .extracting(OrderStatusChange::status).containsExactly(OrderStatus.LISTO_PARA_DESPACHAR);
         assertThat(publishedEvents).singleElement().satisfies(event -> {
             assertThat(event.orderId()).isEqualTo(orderId);
             assertThat(event.buyerId()).isEqualTo(buyerId);
             assertThat(event.previousStatus()).isEqualTo(OrderStatus.EN_PREPARACION);
-            assertThat(event.newStatus()).isEqualTo(OrderStatus.DESPACHADO);
+            assertThat(event.newStatus()).isEqualTo(OrderStatus.LISTO_PARA_DESPACHAR);
             assertThat(event.occurredAt()).isEqualTo(NOW);
         });
     }
@@ -54,7 +54,7 @@ class OrderFulfillmentServiceTest {
     @Test
     void aRedeliveredCommandIsIgnored() {
         UUID orderId = order(OrderStatus.EN_PREPARACION);
-        AdvanceOrderStatusCommand command = command(orderId, OrderStatus.DESPACHADO);
+        AdvanceOrderStatusCommand command = command(orderId, OrderStatus.LISTO_PARA_DESPACHAR);
 
         service.apply(command);
         Result second = service.apply(command);
@@ -78,9 +78,30 @@ class OrderFulfillmentServiceTest {
     void theQueueCannotSkipAStep() {
         UUID orderId = order(OrderStatus.EN_PREPARACION);
 
-        assertThatThrownBy(() -> service.apply(command(orderId, OrderStatus.ENTREGADO)))
+        assertThatThrownBy(() -> service.apply(command(orderId, OrderStatus.DESPACHADO)))
                 .isInstanceOf(InvalidOrderStatusTransitionException.class);
         assertThat(publishedEvents).isEmpty();
+    }
+
+    @Test
+    void theQueueCannotStartAReturn() {
+        UUID orderId = order(OrderStatus.ENTREGADO);
+
+        assertThatThrownBy(() -> service.apply(command(orderId, OrderStatus.ESPERANDO_RETIRO)))
+                .isInstanceOf(InvalidOrderStatusTransitionException.class);
+        assertThat(publishedEvents).isEmpty();
+    }
+
+    @Test
+    void theQueueCompletesAnApprovedReturn() {
+        UUID orderId = order(OrderStatus.ESPERANDO_RETIRO);
+
+        service.apply(command(orderId, OrderStatus.RETIRADO));
+        service.apply(command(orderId, OrderStatus.DEVUELTO));
+
+        assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.DEVUELTO);
+        assertThat(publishedEvents).extracting(OrderStatusChangedEvent::newStatus)
+                .containsExactly(OrderStatus.RETIRADO, OrderStatus.DEVUELTO);
     }
 
     @Test

@@ -136,7 +136,7 @@ class OrderMessagingIntegrationTest {
     void invalidTransitionGoesStraightToTheDeadLetterQueue() {
         applyUseCase.behavior = command -> {
             throw new InvalidOrderStatusTransitionException(OrderStatus.CREADO, command.targetStatus(),
-                    OrderTransitionTrigger.FULFILLMENT);
+                    OrderTransitionTrigger.LOGISTICS);
         };
         UUID orderId = UUID.randomUUID();
 
