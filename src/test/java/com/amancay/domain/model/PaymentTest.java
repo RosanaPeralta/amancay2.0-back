@@ -122,7 +122,8 @@ class PaymentTest {
     void providerApprovalRejectsAnAlreadyDecidedPayment() {
         Payment payment = payment(PaymentMethod.MERCADO_PAGO, PaymentStatus.RECHAZADO);
 
-        assertThatThrownBy(() -> payment.approveFromProvider("mp-123")).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> payment.approveFromProvider("mp-123"))
+                .isInstanceOf(InvalidPaymentStatusTransitionException.class);
         assertThat(payment.getExternalId()).isNull();
     }
 

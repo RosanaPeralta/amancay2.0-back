@@ -82,8 +82,8 @@ public class Payment {
         if (method != PaymentMethod.MERCADO_PAGO) {
             throw new IllegalArgumentException("Only Mercado Pago payments are approved by the provider");
         }
-        if (status != PaymentStatus.PENDIENTE) {
-            throw new IllegalStateException("Only a pending payment can be approved");
+        if (!status.canTransitionTo(PaymentStatus.APROBADO)) {
+            throw new InvalidPaymentStatusTransitionException(status, PaymentStatus.APROBADO);
         }
         if (externalId == null || externalId.isBlank()) {
             throw new IllegalArgumentException("externalId is required");

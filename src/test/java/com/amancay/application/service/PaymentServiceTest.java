@@ -354,6 +354,18 @@ class PaymentServiceTest {
         assertThat(saved.getExternalId()).isEqualTo("mp-1");
         assertThat(orders.paid).containsExactly(order.id());
         assertThat(stock.of(variantId)).isEqualTo(3);
+        assertThat(publishedEvents).containsExactly(
+                new PaymentStatusChangedEvent(pending.getId(), PaymentStatus.PENDIENTE, PaymentStatus.APROBADO));
+    }
+
+    @Test
+    void pendingAttemptDoesNotPublishAStatusChange() {
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
+        nextProcessorResult = PaymentResult.pending("Esperando la transferencia");
+
+        paymentService.create(REQUESTER_ID, order.id(), card());
+
+        assertThat(publishedEvents).isEmpty();
     }
 
     @Test

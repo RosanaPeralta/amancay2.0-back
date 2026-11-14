@@ -202,6 +202,8 @@ public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase
 
         payment.approveFromProvider(providerPayment.id());
         Payment saved = paymentRepository.save(payment);
+        publishPaymentEventPort.publish(
+                new PaymentStatusChangedEvent(saved.getId(), PaymentStatus.PENDIENTE, saved.getStatus()));
         fulfill(payableOrderPort.load(saved.getOrderId()));
         log.info("Payment {} approved by Mercado Pago (payment {})", saved.getId(), providerPayment.id());
     }
@@ -220,8 +222,11 @@ public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase
     private PaymentOutcome attemptPayment(PayableOrder order, PaymentDetails details) {
         PaymentResult result = paymentProcessorPort.process(order, details);
         Payment saved = paymentRepository.save(Payment.attempt(order.id(), order.total(), details.method(), result));
-        publishPaymentEventPort
-                .publish(new PaymentStatusChangedEvent(saved.getId(), PaymentStatus.PENDIENTE, saved.getStatus()));
+        // Un intento que queda PENDIENTE (transferencia, Mercado Pago) no cambio de estado todavia.
+        if (saved.getStatus() != PaymentStatus.PENDIENTE) {
+            publishPaymentEventPort
+                    .publish(new PaymentStatusChangedEvent(saved.getId(), PaymentStatus.PENDIENTE, saved.getStatus()));
+        }
 
         if (saved.isApproved()) {
             fulfill(order);
