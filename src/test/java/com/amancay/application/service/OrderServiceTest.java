@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.amancay.application.port.in.CreateOrderCommand;
+import com.amancay.application.service.fake.InMemoryOrderRepository;
 import com.amancay.application.port.out.LoadProductVariantPort;
 import com.amancay.application.port.out.LoadRequesterPort;
 import com.amancay.application.port.out.LoadShippingAddressPort;
@@ -42,7 +45,9 @@ import com.amancay.domain.model.ShippingQuote;
 // Sin Mockito ni Spring: cada puerto de salida se reemplaza por un fake en memoria.
 class OrderServiceTest {
 
-    private final InMemoryOrders orders = new InMemoryOrders();
+    private static final Instant NOW = Instant.parse("2026-11-14T12:00:00Z");
+
+    private final InMemoryOrderRepository orders = new InMemoryOrderRepository();
     private final Map<UUID, LoadProductVariantPort.ProductVariantInfo> variants = new HashMap<>();
     private final Map<UUID, ShippingAddress> addresses = new HashMap<>();
     private final Map<UUID, LoadRequesterPort.Requester> users = new HashMap<>();
@@ -67,7 +72,7 @@ class OrderServiceTest {
             return new ShippingQuote(new BigDecimal("15.0"), new BigDecimal("12.50"));
         };
         orderService = new OrderService(orders, variantPort, addressPort, requesterPort, eventPort, shippingPort,
-                new AdminGuard(requesterPort));
+                Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -206,51 +211,26 @@ class OrderServiceTest {
     }
 
     @Test
-    void changeStatusPersistsTheTransitionAndPublishesAnEvent() {
-        UUID orderId = UUID.randomUUID();
-        orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
-
-        Order result = orderService.changeStatus(admin(), orderId, OrderStatus.EN_PREPARACION);
-
-        assertThat(result.getStatus()).isEqualTo(OrderStatus.EN_PREPARACION);
-        assertThat(orders.findById(orderId).orElseThrow().getStatusHistory())
-                .extracting(OrderStatusChange::status).containsExactly(OrderStatus.EN_PREPARACION);
-        assertThat(publishedEvents).containsExactly(
-                new OrderStatusChangedEvent(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION));
-    }
-
-    @Test
-    void invalidTransitionIsNotSavedNorPublished() {
-        UUID orderId = UUID.randomUUID();
-        orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
-
-        assertThatThrownBy(() -> orderService.changeStatus(admin(), orderId, OrderStatus.ENTREGADO))
-                .isInstanceOf(InvalidOrderStatusTransitionException.class);
-        assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.CREADO);
-        assertThat(publishedEvents).isEmpty();
-    }
-
-    @Test
-    void buyerCannotChangeTheStatus() {
-        UUID orderId = UUID.randomUUID();
-        orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
-
-        assertThatThrownBy(() -> orderService.changeStatus(buyer(), orderId, OrderStatus.EN_PREPARACION))
-                .isInstanceOf(AdminRequiredException.class);
-        assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.CREADO);
-        assertThat(publishedEvents).isEmpty();
-    }
-
-    @Test
     void markAsPaidMovesTheOrderWithoutAnAdmin() {
         UUID orderId = UUID.randomUUID();
-        orders.put(OrderFixtures.persisted(orderId, UUID.randomUUID(), OrderStatus.CREADO));
+        UUID buyerId = UUID.randomUUID();
+        orders.put(OrderFixtures.persisted(orderId, buyerId, OrderStatus.CREADO));
 
         orderService.markAsPaid(orderId);
 
         assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.EN_PREPARACION);
-        assertThat(publishedEvents).containsExactly(
-                new OrderStatusChangedEvent(orderId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION));
+        assertSinglePublishedEvent(orderId, buyerId, OrderStatus.CREADO, OrderStatus.EN_PREPARACION);
+    }
+
+    private void assertSinglePublishedEvent(UUID orderId, UUID buyerId, OrderStatus previous, OrderStatus next) {
+        assertThat(publishedEvents).singleElement().satisfies(event -> {
+            assertThat(event.eventId()).isNotNull();
+            assertThat(event.orderId()).isEqualTo(orderId);
+            assertThat(event.buyerId()).isEqualTo(buyerId);
+            assertThat(event.previousStatus()).isEqualTo(previous);
+            assertThat(event.newStatus()).isEqualTo(next);
+            assertThat(event.occurredAt()).isEqualTo(NOW);
+        });
     }
 
     private UUID buyer() {
@@ -279,61 +259,5 @@ class OrderServiceTest {
 
     private CreateOrderCommand command(UUID requesterId, UUID addressId, UUID variantId, int quantity) {
         return new CreateOrderCommand(requesterId, addressId, List.of(new CreateOrderCommand.Item(variantId, quantity)));
-    }
-
-    // Imita lo que hace la base: asigna ids y timestamps al guardar, y devuelve una
-    // copia para que el test no comparta la instancia con el servicio.
-    private static final class InMemoryOrders implements OrderRepositoryPort {
-
-        private final Map<UUID, Order> store = new HashMap<>();
-
-        void put(Order order) {
-            store.put(order.getId(), order);
-        }
-
-        @Override
-        public Optional<Order> findById(UUID id) {
-            return Optional.ofNullable(store.get(id)).map(InMemoryOrders::copy);
-        }
-
-        @Override
-        public List<Order> findByUserId(UUID userId) {
-            return store.values().stream().filter(order -> order.belongsTo(userId)).map(InMemoryOrders::copy)
-                    .toList();
-        }
-
-        @Override
-        public List<Order> findAllById(Collection<UUID> ids) {
-            return ids.stream().map(store::get).filter(order -> order != null).map(InMemoryOrders::copy).toList();
-        }
-
-        @Override
-        public List<Order> findAllNewestFirst() {
-            return store.values().stream().sorted(Comparator.comparing(Order::getCreatedAt).reversed())
-                    .map(InMemoryOrders::copy).toList();
-        }
-
-        @Override
-        public Order save(Order order) {
-            UUID id = order.getId() == null ? UUID.randomUUID() : order.getId();
-            Instant now = Instant.now();
-            Order saved = new Order(id, order.getUserId(), order.getShippingAddressId(), order.getShippingAddress(),
-                    order.getStatus(), order.getSubtotal(), order.getShippingCost(), order.getTotal(),
-                    order.getCreatedAt() == null ? now : order.getCreatedAt(), now, order.getItems(),
-                    order.getStatusHistory().stream()
-                            .map(change -> change.isNew()
-                                    ? new OrderStatusChange(UUID.randomUUID(), change.status(), now)
-                                    : change)
-                            .toList());
-            store.put(id, saved);
-            return copy(saved);
-        }
-
-        private static Order copy(Order order) {
-            return new Order(order.getId(), order.getUserId(), order.getShippingAddressId(),
-                    order.getShippingAddress(), order.getStatus(), order.getSubtotal(), order.getShippingCost(),
-                    order.getTotal(), order.getCreatedAt(), order.getUpdatedAt(), order.getItems(),
-                    order.getStatusHistory());
-        }
     }
 }

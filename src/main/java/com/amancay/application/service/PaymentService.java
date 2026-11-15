@@ -29,7 +29,9 @@ import com.amancay.application.port.out.PaymentProcessorPort;
 import com.amancay.application.port.out.PaymentProviderPort;
 import com.amancay.application.port.out.PaymentProviderPort.ProviderPayment;
 import com.amancay.application.port.out.PaymentRepositoryPort;
+import com.amancay.application.port.out.PublishPaymentEventPort;
 import com.amancay.application.port.out.StockPort;
+import com.amancay.domain.event.PaymentStatusChangedEvent;
 import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.PaymentNotFoundException;
 import com.amancay.domain.model.Payment;
@@ -51,18 +53,20 @@ public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase
     private final PaymentProviderPort paymentProviderPort;
     private final StockPort stockPort;
     private final BuyerEmailPort buyerEmailPort;
+    private final PublishPaymentEventPort publishPaymentEventPort;
     private final AdminGuard adminGuard;
 
     public PaymentService(PaymentRepositoryPort paymentRepository,
             PayableOrderPort payableOrderPort, PaymentProcessorPort paymentProcessorPort,
             PaymentProviderPort paymentProviderPort, StockPort stockPort, BuyerEmailPort buyerEmailPort,
-            AdminGuard adminGuard) {
+            PublishPaymentEventPort publishPaymentEventPort, AdminGuard adminGuard) {
         this.paymentRepository = paymentRepository;
         this.payableOrderPort = payableOrderPort;
         this.paymentProcessorPort = paymentProcessorPort;
         this.paymentProviderPort = paymentProviderPort;
         this.stockPort = stockPort;
         this.buyerEmailPort = buyerEmailPort;
+        this.publishPaymentEventPort = publishPaymentEventPort;
         this.adminGuard = adminGuard;
     }
 
@@ -116,8 +120,10 @@ public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase
         adminGuard.requireAdmin(requesterId);
         Payment.requireFinalDecision(decision);
         Payment payment = findPayment(paymentId);
+        PaymentStatus previousStatus = payment.getStatus();
         payment.confirm(decision);
         Payment saved = paymentRepository.save(payment);
+        publishPaymentEventPort.publish(new PaymentStatusChangedEvent(saved.getId(), previousStatus, saved.getStatus()));
 
         if (saved.isApproved()) {
             fulfill(payableOrderPort.load(saved.getOrderId()));
@@ -196,6 +202,8 @@ public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase
 
         payment.approveFromProvider(providerPayment.id());
         Payment saved = paymentRepository.save(payment);
+        publishPaymentEventPort.publish(
+                new PaymentStatusChangedEvent(saved.getId(), PaymentStatus.PENDIENTE, saved.getStatus()));
         fulfill(payableOrderPort.load(saved.getOrderId()));
         log.info("Payment {} approved by Mercado Pago (payment {})", saved.getId(), providerPayment.id());
     }
@@ -214,6 +222,11 @@ public class PaymentService implements CreatePaymentUseCase, RetryPaymentUseCase
     private PaymentOutcome attemptPayment(PayableOrder order, PaymentDetails details) {
         PaymentResult result = paymentProcessorPort.process(order, details);
         Payment saved = paymentRepository.save(Payment.attempt(order.id(), order.total(), details.method(), result));
+        // Un intento que queda PENDIENTE (transferencia, Mercado Pago) no cambio de estado todavia.
+        if (saved.getStatus() != PaymentStatus.PENDIENTE) {
+            publishPaymentEventPort
+                    .publish(new PaymentStatusChangedEvent(saved.getId(), PaymentStatus.PENDIENTE, saved.getStatus()));
+        }
 
         if (saved.isApproved()) {
             fulfill(order);

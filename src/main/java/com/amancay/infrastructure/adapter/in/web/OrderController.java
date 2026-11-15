@@ -6,11 +6,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.amancay.application.port.in.ChangeOrderStatusUseCase;
 import com.amancay.application.port.in.CreateOrderUseCase;
 import com.amancay.application.port.in.DescribeOrderItemsQuery;
 import com.amancay.application.port.in.GetOrderQuery;
@@ -29,7 +26,6 @@ import com.amancay.domain.model.OrderItemProduct;
 import com.amancay.infrastructure.adapter.in.web.dto.CreateOrderRequest;
 import com.amancay.infrastructure.adapter.in.web.dto.OrderResponse;
 import com.amancay.infrastructure.adapter.in.web.dto.ShippingQuoteResponse;
-import com.amancay.infrastructure.adapter.in.web.dto.UpdateOrderStatusRequest;
 import com.amancay.infrastructure.security.LoggedUser;
 
 import jakarta.validation.Valid;
@@ -42,17 +38,15 @@ public class OrderController {
     private final ListOrdersQuery listOrdersQuery;
     private final GetOrderQuery getOrderQuery;
     private final CreateOrderUseCase createOrderUseCase;
-    private final ChangeOrderStatusUseCase changeOrderStatusUseCase;
     private final DescribeOrderItemsQuery describeOrderItemsQuery;
     private final QuoteShippingQuery quoteShippingQuery;
 
     public OrderController(ListOrdersQuery listOrdersQuery, GetOrderQuery getOrderQuery,
-            CreateOrderUseCase createOrderUseCase, ChangeOrderStatusUseCase changeOrderStatusUseCase,
+            CreateOrderUseCase createOrderUseCase,
             DescribeOrderItemsQuery describeOrderItemsQuery, QuoteShippingQuery quoteShippingQuery) {
         this.listOrdersQuery = listOrdersQuery;
         this.getOrderQuery = getOrderQuery;
         this.createOrderUseCase = createOrderUseCase;
-        this.changeOrderStatusUseCase = changeOrderStatusUseCase;
         this.describeOrderItemsQuery = describeOrderItemsQuery;
         this.quoteShippingQuery = quoteShippingQuery;
     }
@@ -88,16 +82,6 @@ public class OrderController {
             @Valid @RequestBody CreateOrderRequest request) {
         OrderResponse order = toResponse(createOrderUseCase.create(request.toCommand(loggedUser.id())));
         return ResponseEntity.created(URI.create("/api/orders/" + order.id())).body(order);
-    }
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<OrderResponse> changeStatus(
-            @AuthenticationPrincipal LoggedUser loggedUser,
-            @PathVariable UUID id,
-            @Valid @RequestBody UpdateOrderStatusRequest request) {
-        return ResponseEntity.ok(toResponse(changeOrderStatusUseCase.changeStatus(loggedUser.id(), id,
-                request.status())));
     }
 
     private OrderResponse toResponse(Order order) {

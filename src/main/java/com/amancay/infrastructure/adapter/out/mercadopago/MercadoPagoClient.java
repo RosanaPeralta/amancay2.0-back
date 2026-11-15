@@ -53,7 +53,7 @@ public class MercadoPagoClient implements MercadoPagoCheckout, PaymentProviderPo
         // Con esto se vuelve a encontrar la orden desde el pago (webhook o verificacion).
         body.put("external_reference", orderId);
         // Mercado Pago no redirige a localhost/127.0.0.1: en ese caso no se mandan back_urls y
-        // el front abre el checkout en otra pestaña y espera el pago (ver MERCADOPAGO.md).
+        // el front abre el checkout en otra pestaña y espera el pago (ver la seccion de Mercado Pago del README).
         if (!isLocal(returnUrl)) {
             body.put("back_urls", Map.of("success", returnUrl, "failure", returnUrl, "pending", returnUrl));
             if (returnUrl.startsWith("https://")) {

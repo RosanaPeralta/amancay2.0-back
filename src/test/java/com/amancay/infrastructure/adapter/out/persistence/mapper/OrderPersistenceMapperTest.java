@@ -13,6 +13,7 @@ import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderFixtures;
 import com.amancay.domain.model.OrderItem;
 import com.amancay.domain.model.OrderStatus;
+import com.amancay.domain.model.OrderTransitionTrigger;
 import com.amancay.infrastructure.adapter.out.persistence.entity.OrderJpaEntity;
 import com.amancay.infrastructure.adapter.out.persistence.entity.OrderStatusHistoryJpaEntity;
 
@@ -44,17 +45,17 @@ class OrderPersistenceMapperTest {
     void applyChangesCopiesStatusAndAppendsOnlyNewHistoryEntries() {
         OrderJpaEntity entity = persistedEntity(OrderStatus.CREADO);
         Order order = mapper.toDomain(entity);
-        order.changeStatus(OrderStatus.EN_PREPARACION);
+        order.changeStatus(OrderStatus.EN_PREPARACION, OrderTransitionTrigger.PAYMENT);
         mapper.applyChanges(order, entity);
         entity.getStatusHistory().getFirst().setId(UUID.randomUUID());
 
         Order reloaded = mapper.toDomain(entity);
-        reloaded.changeStatus(OrderStatus.DESPACHADO);
+        reloaded.changeStatus(OrderStatus.LISTO_PARA_DESPACHAR, OrderTransitionTrigger.LOGISTICS);
         mapper.applyChanges(reloaded, entity);
 
-        assertThat(entity.getStatus()).isEqualTo(OrderStatus.DESPACHADO);
+        assertThat(entity.getStatus()).isEqualTo(OrderStatus.LISTO_PARA_DESPACHAR);
         assertThat(entity.getStatusHistory()).extracting(OrderStatusHistoryJpaEntity::getStatus)
-                .containsExactly(OrderStatus.EN_PREPARACION, OrderStatus.DESPACHADO);
+                .containsExactly(OrderStatus.EN_PREPARACION, OrderStatus.LISTO_PARA_DESPACHAR);
         assertThat(entity.getStatusHistory()).allSatisfy(history -> assertThat(history.getOrder()).isSameAs(entity));
     }
 

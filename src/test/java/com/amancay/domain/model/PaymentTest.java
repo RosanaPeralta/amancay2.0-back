@@ -8,6 +8,8 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.amancay.domain.exception.InvalidPaymentStatusTransitionException;
+
 class PaymentTest {
 
     @Test
@@ -30,6 +32,15 @@ class PaymentTest {
     }
 
     @Test
+    void confirmMovesAPendingPaymentToRechazadoToo() {
+        Payment payment = payment(PaymentMethod.TRANSFERENCIA, PaymentStatus.PENDIENTE);
+
+        payment.confirm(PaymentStatus.RECHAZADO);
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.RECHAZADO);
+    }
+
+    @Test
     void confirmRejectsPendienteAsADecision() {
         Payment payment = payment(PaymentMethod.TRANSFERENCIA, PaymentStatus.PENDIENTE);
 
@@ -41,8 +52,18 @@ class PaymentTest {
     void confirmRejectsAnAlreadyDecidedPayment() {
         Payment payment = payment(PaymentMethod.TRANSFERENCIA, PaymentStatus.RECHAZADO);
 
-        assertThatThrownBy(() -> payment.confirm(PaymentStatus.APROBADO)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> payment.confirm(PaymentStatus.APROBADO))
+                .isInstanceOf(InvalidPaymentStatusTransitionException.class);
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.RECHAZADO);
+    }
+
+    @Test
+    void aprobadoIsATerminalStateForConfirmToo() {
+        Payment payment = payment(PaymentMethod.TRANSFERENCIA, PaymentStatus.APROBADO);
+
+        assertThatThrownBy(() -> payment.confirm(PaymentStatus.RECHAZADO))
+                .isInstanceOf(InvalidPaymentStatusTransitionException.class);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.APROBADO);
     }
 
     @Test
@@ -101,7 +122,8 @@ class PaymentTest {
     void providerApprovalRejectsAnAlreadyDecidedPayment() {
         Payment payment = payment(PaymentMethod.MERCADO_PAGO, PaymentStatus.RECHAZADO);
 
-        assertThatThrownBy(() -> payment.approveFromProvider("mp-123")).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> payment.approveFromProvider("mp-123"))
+                .isInstanceOf(InvalidPaymentStatusTransitionException.class);
         assertThat(payment.getExternalId()).isNull();
     }
 

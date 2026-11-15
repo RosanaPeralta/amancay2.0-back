@@ -26,10 +26,13 @@ import com.amancay.application.port.out.PayableOrderPort;
 import com.amancay.application.port.out.PaymentProviderPort;
 import com.amancay.application.port.out.PaymentProviderPort.ProviderPayment;
 import com.amancay.application.port.out.PaymentRepositoryPort;
+import com.amancay.application.port.out.PublishPaymentEventPort;
 import com.amancay.application.port.out.StockPort;
 import com.amancay.application.service.fake.Admins;
+import com.amancay.domain.event.PaymentStatusChangedEvent;
 import com.amancay.domain.exception.AdminRequiredException;
 import com.amancay.domain.exception.InsufficientStockException;
+import com.amancay.domain.exception.InvalidPaymentStatusTransitionException;
 import com.amancay.domain.exception.OrderAccessDeniedException;
 import com.amancay.domain.exception.OrderNotFoundException;
 import com.amancay.domain.exception.PaymentNotFoundException;
@@ -51,11 +54,13 @@ class PaymentServiceTest {
     private final Map<UUID, String> emails = new HashMap<>();
     private PaymentResult nextProcessorResult = PaymentResult.approved();
     private final List<PaymentDetails> processedDetails = new ArrayList<>();
+    private final List<PaymentStatusChangedEvent> publishedEvents = new ArrayList<>();
 
     private PaymentService paymentService;
 
     @BeforeEach
     void setUp() {
+        PublishPaymentEventPort eventPort = publishedEvents::add;
         paymentService = new PaymentService(payments, orders,
                 (order, details) -> {
                     processedDetails.add(details);
@@ -68,6 +73,7 @@ class PaymentServiceTest {
                     userIds.stream().filter(emails::containsKey).forEach(id -> found.put(id, emails.get(id)));
                     return found;
                 },
+                eventPort,
                 Admins.guard());
     }
 
@@ -81,6 +87,8 @@ class PaymentServiceTest {
         assertThat(result.payment().getAmount()).isEqualByComparingTo("200");
         assertThat(result.payment().getId()).isNotNull();
         assertThat(orders.paid).containsExactly(order.id());
+        assertThat(publishedEvents).containsExactly(
+                new PaymentStatusChangedEvent(result.payment().getId(), PaymentStatus.PENDIENTE, PaymentStatus.APROBADO));
     }
 
     @Test
@@ -94,6 +102,8 @@ class PaymentServiceTest {
         assertThat(result.reason()).isEqualTo("Card declined (simulated)");
         assertThat(payments.findByOrderId(order.id())).hasSize(1);
         assertThat(orders.paid).isEmpty();
+        assertThat(publishedEvents).containsExactly(
+                new PaymentStatusChangedEvent(result.payment().getId(), PaymentStatus.PENDIENTE, PaymentStatus.RECHAZADO));
     }
 
     @Test
@@ -189,6 +199,8 @@ class PaymentServiceTest {
         assertThat(result.getStatus()).isEqualTo(PaymentStatus.APROBADO);
         assertThat(payments.findById(pending.getId()).orElseThrow().getStatus()).isEqualTo(PaymentStatus.APROBADO);
         assertThat(orders.paid).containsExactly(order.id());
+        assertThat(publishedEvents).containsExactly(
+                new PaymentStatusChangedEvent(pending.getId(), PaymentStatus.PENDIENTE, PaymentStatus.APROBADO));
     }
 
     @Test
@@ -200,6 +212,8 @@ class PaymentServiceTest {
 
         assertThat(result.getStatus()).isEqualTo(PaymentStatus.RECHAZADO);
         assertThat(orders.paid).isEmpty();
+        assertThat(publishedEvents).containsExactly(
+                new PaymentStatusChangedEvent(pending.getId(), PaymentStatus.PENDIENTE, PaymentStatus.RECHAZADO));
     }
 
     @Test
@@ -220,7 +234,7 @@ class PaymentServiceTest {
         Payment approved = payments.put(order.id(), PaymentStatus.APROBADO, PaymentMethod.TRANSFERENCIA);
 
         assertThatThrownBy(() -> paymentService.confirm(ADMIN_ID, approved.getId(), PaymentStatus.APROBADO))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(InvalidPaymentStatusTransitionException.class);
     }
 
     @Test
@@ -340,6 +354,18 @@ class PaymentServiceTest {
         assertThat(saved.getExternalId()).isEqualTo("mp-1");
         assertThat(orders.paid).containsExactly(order.id());
         assertThat(stock.of(variantId)).isEqualTo(3);
+        assertThat(publishedEvents).containsExactly(
+                new PaymentStatusChangedEvent(pending.getId(), PaymentStatus.PENDIENTE, PaymentStatus.APROBADO));
+    }
+
+    @Test
+    void pendingAttemptDoesNotPublishAStatusChange() {
+        PayableOrder order = orders.create(REQUESTER_ID, "200");
+        nextProcessorResult = PaymentResult.pending("Esperando la transferencia");
+
+        paymentService.create(REQUESTER_ID, order.id(), card());
+
+        assertThat(publishedEvents).isEmpty();
     }
 
     @Test

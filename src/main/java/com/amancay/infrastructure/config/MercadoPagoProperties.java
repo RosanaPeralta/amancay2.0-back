@@ -2,7 +2,7 @@ package com.amancay.infrastructure.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-// Configuracion de Mercado Pago (ver MERCADOPAGO.md). Sin accessToken la app arranca
+// Configuracion de Mercado Pago (ver la seccion de Mercado Pago del README). Sin accessToken la app arranca
 // igual; solo falla el pago con MERCADO_PAGO.
 @ConfigurationProperties(prefix = "mercadopago")
 public record MercadoPagoProperties(

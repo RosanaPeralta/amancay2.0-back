@@ -24,6 +24,7 @@ import com.amancay.domain.exception.FavoriteNotFoundException;
 import com.amancay.domain.exception.InactiveUserException;
 import com.amancay.domain.exception.InsufficientStockException;
 import com.amancay.domain.exception.InvalidOrderStatusTransitionException;
+import com.amancay.domain.exception.InvalidPaymentStatusTransitionException;
 import com.amancay.domain.exception.OrderAccessDeniedException;
 import com.amancay.domain.exception.OrderNotFoundException;
 import com.amancay.domain.exception.PaymentNotFoundException;
@@ -140,6 +141,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(InvalidOrderStatusTransitionException.class)
     public ResponseEntity<Map<String, String>> handleInvalidOrderStatusTransition(InvalidOrderStatusTransitionException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidPaymentStatusTransitionException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidPaymentStatusTransition(InvalidPaymentStatusTransitionException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", exception.getMessage()));
     }
 

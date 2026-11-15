@@ -10,13 +10,16 @@ import com.amancay.application.port.in.ListAllOrdersQuery.AdminOrder;
 import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderItemProduct;
 import com.amancay.domain.model.OrderStatus;
+import com.amancay.domain.model.ShippingAddress;
 
-// Los campos de OrderResponse mas el email del comprador, para el panel de admin.
+// Los campos de OrderResponse mas el email del comprador y la direccion de envio, para el panel
+// de admin y la logistica.
 public record AdminOrderResponse(
         UUID id,
         UUID userId,
         String buyerEmail,
         UUID shippingAddressId,
+        ShippingAddress shippingAddress,
         OrderStatus status,
         BigDecimal subtotal,
         BigDecimal shippingCost,
@@ -28,7 +31,7 @@ public record AdminOrderResponse(
     public static AdminOrderResponse from(AdminOrder adminOrder, Map<UUID, OrderItemProduct> products) {
         Order order = adminOrder.order();
         return new AdminOrderResponse(order.getId(), order.getUserId(), adminOrder.buyerEmail(),
-                order.getShippingAddressId(), order.getStatus(), order.getSubtotal(), order.getShippingCost(),
+                order.getShippingAddressId(), order.getShippingAddress(), order.getStatus(), order.getSubtotal(), order.getShippingCost(),
                 order.getTotal(), order.getCreatedAt(), order.getUpdatedAt(),
                 order.getItems().stream().map(item -> OrderItemResponse.from(item, products)).toList());
     }

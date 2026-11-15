@@ -1,5 +1,6 @@
 package com.amancay.application.service;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -8,7 +9,6 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.amancay.application.port.in.ChangeOrderStatusUseCase;
 import com.amancay.application.port.in.CreateOrderCommand;
 import com.amancay.application.port.in.CreateOrderUseCase;
 import com.amancay.application.port.in.GetOrderQuery;
@@ -30,11 +30,12 @@ import com.amancay.domain.exception.OrderNotFoundException;
 import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderItem;
 import com.amancay.domain.model.OrderStatus;
+import com.amancay.domain.model.OrderTransitionTrigger;
 import com.amancay.domain.model.ShippingAddress;
 import com.amancay.domain.model.ShippingQuote;
 
 @Service
-public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCase, MarkOrderAsPaidUseCase, GetOrderQuery,
+public class OrderService implements CreateOrderUseCase, MarkOrderAsPaidUseCase, GetOrderQuery,
         ListOrdersQuery, QuoteShippingQuery {
 
     private final OrderRepositoryPort orderRepository;
@@ -43,19 +44,19 @@ public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCas
     private final LoadRequesterPort loadRequesterPort;
     private final PublishOrderEventPort publishOrderEventPort;
     private final ShippingQuotePort shippingQuotePort;
-    private final AdminGuard adminGuard;
+    private final Clock clock;
 
     public OrderService(OrderRepositoryPort orderRepository,
             LoadProductVariantPort loadProductVariantPort, LoadShippingAddressPort loadShippingAddressPort,
             LoadRequesterPort loadRequesterPort, PublishOrderEventPort publishOrderEventPort,
-            ShippingQuotePort shippingQuotePort, AdminGuard adminGuard) {
+            ShippingQuotePort shippingQuotePort, Clock clock) {
         this.orderRepository = orderRepository;
         this.loadProductVariantPort = loadProductVariantPort;
         this.loadShippingAddressPort = loadShippingAddressPort;
         this.loadRequesterPort = loadRequesterPort;
         this.publishOrderEventPort = publishOrderEventPort;
         this.shippingQuotePort = shippingQuotePort;
-        this.adminGuard = adminGuard;
+        this.clock = clock;
     }
 
     @Override
@@ -117,33 +118,17 @@ public class OrderService implements CreateOrderUseCase, ChangeOrderStatusUseCas
         return shippingQuotePort.quote(findShippingAddress(shippingAddressId));
     }
 
-    @Override
-    @Transactional
-    public Order changeStatus(UUID requesterId, UUID orderId, OrderStatus newStatus) {
-        adminGuard.requireAdmin(requesterId);
-
-        if (newStatus == OrderStatus.DEVUELTO) {
-            throw new IllegalArgumentException(
-                    "Orders can only be marked as returned through an approved return request");
-        }
-
-        return applyStatus(orderId, newStatus);
-    }
-
+    // Ultimo paso que maneja la app: desde EN_PREPARACION el pedido avanza por la cola
+    // de logistica (OrderFulfillmentService).
     @Override
     @Transactional
     public void markAsPaid(UUID orderId) {
-        applyStatus(orderId, OrderStatus.EN_PREPARACION);
-    }
-
-    private Order applyStatus(UUID orderId, OrderStatus newStatus) {
         Order order = findOrder(orderId);
         OrderStatus previousStatus = order.getStatus();
-        order.changeStatus(newStatus);
+        order.changeStatus(OrderStatus.EN_PREPARACION, OrderTransitionTrigger.PAYMENT);
         Order saved = orderRepository.save(order);
 
-        publishOrderEventPort.publish(new OrderStatusChangedEvent(saved.getId(), previousStatus, newStatus));
-        return saved;
+        publishOrderEventPort.publish(OrderStatusChangedEvent.of(saved, previousStatus, clock.instant()));
     }
 
     private UUID resolveTargetUserId(UUID requesterId, UUID requestedUserId) {

@@ -16,6 +16,7 @@ import com.amancay.application.port.out.ReturnRequestRepositoryPort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
 import com.amancay.domain.model.Order;
 import com.amancay.domain.model.OrderStatus;
+import com.amancay.domain.model.OrderTransitionTrigger;
 import com.amancay.domain.model.ReturnRequest;
 import com.amancay.domain.model.ReturnRequestStatus;
 import java.util.List;
@@ -61,16 +62,13 @@ public class AdminReturnRequestService
         }
 
         request.approve(adminId, clock.instant());
-        order.changeStatus(OrderStatus.DEVUELTO);
+        order.changeStatus(OrderStatus.ESPERANDO_RETIRO, OrderTransitionTrigger.RETURN_REQUEST);
 
         ReturnRequest savedRequest = returnRequestRepository.save(request);
         Order savedOrder = orderRepository.save(order);
 
         publishOrderEventPort.publish(
-                new OrderStatusChangedEvent(
-                        savedOrder.getId(),
-                        previousStatus,
-                        OrderStatus.DEVUELTO));
+                OrderStatusChangedEvent.of(savedOrder, previousStatus, clock.instant()));
 
         return savedRequest;
     }

@@ -48,7 +48,7 @@ public class MercadoPagoWebhookController {
         String paymentId = dataId != null ? dataId : bodyDataId(body);
 
         // Solo nos interesan los pagos. Las notificaciones IPN viejas (?topic=...&id=...) se
-        // ignoran: ver MERCADOPAGO.md (source_news=webhooks).
+        // ignoran: ver la seccion de Mercado Pago del README.
         if (!"payment".equals(eventType) || paymentId == null) {
             log.debug("Ignoring Mercado Pago notification type={} id={}", eventType, paymentId);
             return ResponseEntity.ok().build();

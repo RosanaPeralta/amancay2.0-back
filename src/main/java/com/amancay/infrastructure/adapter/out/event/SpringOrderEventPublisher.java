@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import com.amancay.application.port.out.PublishOrderEventPort;
 import com.amancay.domain.event.OrderStatusChangedEvent;
 
-// Publica en memoria; lo consume OrderStatusNotificationListener.
+// Publica en memoria; RabbitOrderEventRelay lo reenvia a RabbitMQ despues del commit.
 @Component
 class SpringOrderEventPublisher implements PublishOrderEventPort {
 
